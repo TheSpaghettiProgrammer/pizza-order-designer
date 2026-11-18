@@ -7,6 +7,13 @@ import { expect, test, type Page } from '@playwright/test';
 const STORAGE_KEY = 'pizza-order-designer:draft-order';
 
 const startButton = (p: Page) => p.getByRole('button', { name: 'Start order', exact: true });
+const cancelButton = (p: Page) =>
+  p.getByRole('banner').getByRole('button', { name: 'Cancel order', exact: true });
+const dialog = (p: Page) => p.getByRole('dialog');
+const keepButton = (p: Page) =>
+  dialog(p).getByRole('button', { name: 'Keep my order', exact: true });
+const confirmButton = (p: Page) =>
+  dialog(p).getByRole('button', { name: 'Yes, cancel order', exact: true });
 
 const draftWithPizzas = (quantity: number) => ({
   version: 1,
@@ -28,10 +35,58 @@ test('the start screen leads into an empty order', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: 'Welcome!' })).toBeVisible();
+  await expect(cancelButton(page)).toBeHidden();
   await startButton(page).click();
 
   await expect(page).toHaveURL('/order');
   await expect(page.getByRole('heading', { name: 'Your order' })).toBeVisible();
+  await expect(page.getByText('No pizzas in your order yet.')).toBeVisible();
+  await expect(cancelButton(page)).toBeVisible();
+});
+
+test('declining the Cancel order confirmation keeps the order', async ({ page }) => {
+  await page.goto('/');
+  await startButton(page).click();
+  await expect(page).toHaveURL('/order');
+
+  await cancelButton(page).click();
+  await expect(dialog(page)).toBeVisible();
+  await keepButton(page).click();
+  await expect(dialog(page)).toBeHidden();
+  await expect(page).toHaveURL('/order');
+
+  await cancelButton(page).click();
+  await expect(dialog(page)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog(page)).toBeHidden();
+  await expect(page).toHaveURL('/order');
+
+  await page.reload();
+  await expect(page).toHaveURL('/order');
+});
+
+test('confirming Cancel order clears the order and returns to the start screen', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await startButton(page).click();
+  await expect(page).toHaveURL('/order');
+
+  await cancelButton(page).click();
+  await confirmButton(page).click();
+
+  await expect(page).toHaveURL('/');
+  await expect(startButton(page)).toBeVisible();
+  expect(await page.evaluate((key) => sessionStorage.getItem(key), STORAGE_KEY)).toBeNull();
+
+  // Back must not revive the cancelled order.
+  await page.goBack();
+  await expect(page).toHaveURL('/');
+  await expect(startButton(page)).toBeVisible();
+
+  // Start over gives a fresh, empty order.
+  await startButton(page).click();
+  await expect(page).toHaveURL('/order');
   await expect(page.getByText('No pizzas in your order yet.')).toBeVisible();
 });
 
