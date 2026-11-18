@@ -195,7 +195,8 @@ Per-role additions:
 | New EF migration | `cd server; dotnet ef migrations add <Name> -p src/PizzaOrderDesigner.Data -s src/PizzaOrderDesigner.Api` |
 | Frontend lint | `npm --prefix client run lint:check` |
 | Frontend types | `npm --prefix client run typecheck` |
-| Frontend tests | `npm --prefix client test` |
+| Frontend unit tests | `npm --prefix client test` (Vitest) |
+| Frontend E2E (any UI story) | `npm --prefix client run test:e2e` (Playwright; first time: `npx --prefix client playwright install chromium`) |
 | Frontend build | `cd client; npx quasar build` |
 | Full stack smoke | `docker compose up --build -d`, then `GET http://localhost:8080/api/health` → `Healthy` |
 

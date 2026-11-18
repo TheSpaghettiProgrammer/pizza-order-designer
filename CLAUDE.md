@@ -18,7 +18,9 @@ This is a job-interview take-home. The user wants **every action and decision tr
   - `tests/PizzaOrderDesigner.Api.Tests`: xUnit
 - `client/`: Quasar 2 CLI (`@quasar/app-vite`, `quasar.config.ts`) + Vue 3.5 + TypeScript, Router
   (history mode), Pinia, ESLint + Prettier. Vitest via `@quasar/testing-unit-vitest`, with tests in
-  `client/test/vitest/__tests__/`. Dev server on :9000. Build output is `dist/spa`.
+  `client/test/vitest/__tests__/` (unit: stores, API client). **Playwright** E2E for UI behaviour in
+  `client/test/e2e/` (D-034); it starts its own dev server on :9100. Dev server on :9000. Build output
+  is `dist/spa`.
 - `docker-compose.yml`: `db` (postgres:17), `api` (:5080), `web` (nginx, :8080)
 
 ## Conventions
