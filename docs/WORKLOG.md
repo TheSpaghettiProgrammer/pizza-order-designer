@@ -425,9 +425,19 @@ settles #8's ownership: the order from D-035 (#41 → #25 → #8 → #26) now ru
 - **Proposed decisions at Gate 1:** D-044 (kiosk flow, route guard and shared exit path) and D-045
   (draft-order store and persistence), plus three README assumption lines.
 
+### #25 delivered (Gate 1 → PR)
+- **Gate 1:** approved by the user at 21:13 as part of the process review (D-046), and recorded D-044
+  and D-045.
+- **`pizza-developer` (sonnet, as general-purpose):** 4 step commits in about 6 minutes. Optional E8
+  dropped.
+- **`pizza-reviewer` (opus): PASS**, with the cause of E8 explained.
+- **Orchestrator:** added the Enter-key check (and mutation-checked it), then re-ran every check: all
+  green. Details in the plan's §5.
+- **Cost of the full four-role flow for one P1 screen:** 4 opus runs plus 1 sonnet run, and an
+  871-line plan. That's why D-046 slims the process for the remaining PRs.
+
 ### Open items
-- **Gate 1:** the user approves the #25 plan. Then record D-044/D-045, run `pizza-developer`, then
-  `pizza-reviewer`, then the PR.
+- After #25 merges: PR A (pricing core) is ready on `story/8-14-pricing-core` and in review.
 - `fix/` branch: make `lint:check` really check formatting (CRLF / `endOfLine`).
 - Publish the menu and quote API contract when #8 and #14 are planned.
 - #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.

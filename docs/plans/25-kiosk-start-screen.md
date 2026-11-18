@@ -874,22 +874,74 @@ Implemented plan Round 2, steps 1-4, with review round 2's four Minors folded in
 ## 4. Code review  *(pizza-reviewer)*
 
 ### Round 1
-**Verdict:** PASS | CHANGES REQUESTED
+**Verdict:** PASS
 
-**Traceability**
+Reviewed `git diff origin/main...HEAD -- client/` (commits `bc23063`, `6ff4a2c`, `72e23f2`, `447ec2b`) against
+plan Round 2, plan review Round 2's four Minors and issue #25. The code matches the plan closely. It's small and
+readable, and the tests would fail if the behaviour broke. No Blockers or Majors.
+
+**Traceability** (AC 4, the idle timeout, is out of scope by the user's choice and moved to #44)
 | AC | Implemented in | Proven by | Status |
 |---|---|---|---|
+| 1. Welcome screen with a large **Start order** button | `src/pages/StartPage.vue` (`size="xl"`, `min-height: 96px`, max 480 px), route `start` in `src/router/routes.ts` | E1 `kiosk-start.spec.ts:34`, E9 `:149` (≥ 96 px tall, inside 768 px, tap works) | ✅ |
+| 2. **Cancel order** always available while building; confirms, clears the draft, returns to start | `src/components/CancelOrderButton.vue` (Dialog plugin, `focus: 'cancel'`), `src/composables/use-end-order.ts` (clear, then push `start`), `src/layouts/MainLayout.vue` (`v-if="route.meta.building"`), `src/router/kiosk-guard.ts` + `src/router/index.ts`, `quasar.config.ts` (`Dialog`) | E1 `:34` (hidden on `/`, visible on `/order`), E2 `:47` (Keep and Escape keep the order), E3 `:68` (confirm → `/`, key removed, Back stays on `/`, start over is empty), E9 (≥ 48 px), U6, G1/G2 | ✅ |
+| 3. Draft in a Pinia store; a refresh keeps it (sessionStorage) | `src/stores/draft-order-store.ts` (setup store, load in setup, sync deep watch → save), `src/stores/draft-order-persistence.ts` (versioned envelope, shape-validated, warn once), `src/models/draft-order.ts` (codes only, no money, D-039) | U1–U4 (persistence), U5, U7–U10 (store), E2's reload (the app's own save survives), E4 `:93` (seeded line restored → "2 pizzas"), E5 `:105`, E7 `:127` (corrupt value ignored and removed) | ✅ |
 
-**Plan conformance:** …
+Count: **3 ✅, 0 ⚠️, 0 ❌**.
 
-**Checks re-run:** command → result
+**Plan conformance:** all four steps are done, in order, one commit each. Each has an imperative subject,
+`Refs #25`, and a `Co-Authored-By: Claude Sonnet 5.5` trailer. The file list matches 1.3 exactly: no server
+change, no new dependency, no `README.md` edit, no unplanned file. Plan review Round 2's Minors: M1 (methods
+called on the persistence object, parsed storage typed `unknown`), M2 (Start order ≥ 96 px, Cancel ≥ 48 px)
+and M4 (complete `Storage` literal, no cast) are folded in. M3 lapses because E8 was dropped. The deviations in
+section 3:
+- **E8 dropped: acceptable, and it doesn't hide an app bug.** I traced the cause. In `quasar dev`, Vite serves
+  Quasar's whole client bundle, and its `SessionStorage` plugin runs `getStorage("session")` at module scope
+  (`node_modules/quasar/dist/quasar.client.js:30836`, which reads `window[type + "Storage"]` at `:30626`). The
+  only guard is `client.has.webStorage`, and that checks `window.localStorage` alone (`:226`). With only the
+  `sessionStorage` getter throwing, Quasar's module throws on evaluation and the app never mounts, which is the
+  timeout the developer saw. In the production build that plugin is tree-shaken out: `dist/spa/assets/index-*.js`
+  only touches `sessionStorage` in vue-router's scroll-position helpers (both wrapped in `try/catch`) and in our
+  `draft-order-persistence.ts` (wrapped in `try/catch`). The app's own code never throws on a failing getter,
+  and U4/U10 prove that. I reasoned this from the code and the built bundle; I didn't run the production build
+  in a browser.
+- 31 unit tests (16 persistence, 7 store, 8 guard) in place of "12" (it.each rows count separately): acceptable.
+  Every U1–U10, G1 and G2 row of 1.5 is present, and U2's table matches the plan's list case for case.
+- `parseStoredDraft` builds its result directly; E4 seeds after Start order; E1–E3 are separate `test`s:
+  acceptable, same behaviour.
+
+**Correctness notes (no finding):** `endOrder()` clears the draft before it pushes, so the guard lets `/`
+through. E3 proves it, because otherwise the push would bounce back to `/order`. Each guard redirect target
+passes the guard under the same `hasDraft` (G2), so there's no loop. The store lookup stays inside
+`beforeEach`, as planned. `parseStoredDraft` copies only the known fields and copies `toppingCodes`, so no stray
+keys or shared arrays reach the store. The draft holds no money (D-039), one promo code (D-043). No debug
+leftovers. The one `console.warn` is intentional and fires once.
+
+**Checks re-run** (from `client/`, on `447ec2b` + the docs commit):
+- `npm run typecheck` → exit 0
+- `npx eslint -c ./eslint.config.js "./src*/**/*.{ts,js,cjs,mjs,vue}" test/e2e test/vitest` → exit 0
+- `npm test` → 3 files, **31 / 31 passed**
+- `npm run test:e2e` → **10 / 10 passed** (8 kiosk + 2 smoke, Chromium, own dev server on :9100)
+- `npx prettier --check --end-of-line auto` on the 16 changed client files → "All matched files use Prettier code style!"
+- `npx quasar build`: not re-run (not in this round's brief). A `dist/spa` from 21:20 today is present, and I
+  inspected it for the E8 analysis.
 
 | # | Severity | File:line | Finding and failure scenario | Suggested fix |
 |---|---|---|---|---|
+| 1 | Minor | `src/components/CancelOrderButton.vue:26`; `test/e2e/kiosk-start.spec.ts:47` | `focus: 'cancel'` is a stated safety property in D-044 ("a stray Enter keeps the order"), but no test covers it. If someone drops the option or swaps the button order, Enter on the open dialog would cancel the customer's order, and every spec would still pass. | In E2, after the Escape case, add: Cancel order → `page.keyboard.press('Enter')` → dialog hidden, still `/order`. That's 3 lines. |
+| 2 | Minor | `docs/plans/25-kiosk-start-screen.md` §3 (E8 bullet) | The note says the cause wasn't investigated, and a reader might assume memory-only mode is broken in the real app. The cause is Quasar's dev-mode bundle, not our code (see Plan conformance). | Orchestrator: when it writes the Outcome or WORKLOG, add one line: "E8 can't run under `quasar dev` (Quasar's SessionStorage plugin reads `window.sessionStorage` at load); prod build and app code are safe, and U4/U10 cover it." No code change. |
 
 ---
 
 ## 5. Outcome  *(orchestrator)*
-- PR: …
-- Decisions added: D-…
-- Merged: <date>
+- **Code review round 1: PASS** (3/3 ACs ✅). Both Minors handled by the orchestrator:
+  - **Minor 1:** added a "stray Enter keeps the order" check to E2 (`toBeFocused` on Keep my order,
+    then Enter). Mutation-checked: removing `focus: 'cancel'` makes it fail.
+  - **Minor 2:** E8's timeout cause, per the reviewer. In `quasar dev`, Quasar's full client bundle
+    reads `window.sessionStorage` at module load (its SessionStorage plugin), so a throwing getter
+    stops the dev app mounting at all. The production bundle tree-shakes that plugin out. Our
+    persistence is try/catch-safe and covered by U4/U10. Not an app bug.
+- **Orchestrator re-ran:** typecheck ✅, ESLint ✅, Prettier (changed files) ✅, Vitest 31/31, Playwright
+  10/10, `quasar build` ✅.
+- **Decisions:** D-044, D-045. **Follow-up:** #44 (idle timeout), now on the cut list (D-046).
+- PR: see the PR that closes #25.
