@@ -46,6 +46,12 @@ public sealed class OrderPricer(PromotionEngine promotions, IOptions<PricingOpti
         {
             for (var i = 0; i < inputLines.Count; i++)
             {
+                if (inputLines[i] is null)
+                {
+                    Error($"lines[{i}]", "This item is empty.");
+                    continue;
+                }
+
                 var line = PriceLine(inputLines[i], $"lines[{i}]", menu, Error);
                 if (line is not null)
                 {
@@ -79,7 +85,7 @@ public sealed class OrderPricer(PromotionEngine promotions, IOptions<PricingOpti
         var tipAmount = tip switch
         {
             null => 0.00m, // scale 2, so it serializes as 0.00 like every other amount
-            { IsPercent: false } => tip.Value,
+            { IsPercent: false } => Money.RoundToCents(tip.Value), // "5" → 5.00 (scale 2 on the wire)
             _ => Money.RoundToCents((settings.TipBase == TipBase.PostTax ? taxable + tax : taxable) * tip.Value / 100m),
         };
         var total = taxable + tax + tipAmount;
@@ -117,7 +123,7 @@ public sealed class OrderPricer(PromotionEngine promotions, IOptions<PricingOpti
         }
 
         var toppings = new List<ToppingInfo>();
-        foreach (var code in input.ToppingCodes ?? [])
+        foreach (var code in (input.ToppingCodes ?? []).Where(c => c is not null))
         {
             var topping = menu.FindTopping(code);
             if (topping is null)
@@ -186,13 +192,13 @@ public sealed class OrderPricer(PromotionEngine promotions, IOptions<PricingOpti
 
         if (isPercent && value > settings.MaxTipPercent)
         {
-            error("tip.value", $"A tip percentage must be between 0 and {settings.MaxTipPercent:0}.");
+            error("tip.value", $"A tip percentage must be between 0 and {settings.MaxTipPercent.ToString("0.##", CultureInfo.InvariantCulture)}.");
             return null;
         }
 
         if (!isPercent && value > settings.MaxTipAmount)
         {
-            error("tip.value", $"A tip can't be more than ${settings.MaxTipAmount:0.00}.");
+            error("tip.value", $"A tip can't be more than {Money.Format(settings.MaxTipAmount)}.");
             return null;
         }
 
