@@ -211,6 +211,68 @@ into reviewable stories and open questions. **No feature code yet.** The user re
      no change requested so far.
    - This log entry is itself delivered through a PR (`docs/merge-settings-and-hook`).
 
+9. **PR #40 merged.** Branch auto-deleted by GitHub (the first real test of the setting).
+
 ### Open items
-- **User review of the backlog**, and answers to the M0 questions (#1–#7), before any feature work.
 - User review of `docs/SUBAGENTS.md` and the agent definitions.
+
+---
+
+## 2026-11-17 — Session 3: M0 decisions (planning)
+
+**Context:** The user is running a **second chat** for the UI and Playwright tests. This chat takes the
+backend side: decisions first, then the pricing core (M1) and the order service (M2). The two chats
+should coordinate on the API contract and must not share a working tree (use a separate worktree).
+
+### Decisions taken (D-034 to D-040)
+| Question | Answer | Matches recommendation? |
+|---|---|---|
+| #1 Scope | **Full kiosk vision** (#25, #29, #33 → P1) | No: recommended P0 → P1 → P2-if-time |
+| #2 Pricing math | Recommended rules after research; **tip % on the pre-tax total**, configurable | Mostly. The tip base changed from post-tax to pre-tax |
+| #3 Pricing location | Server only, quote API, 409 on a mismatch | Yes |
+| #4 Cancel | **Delete the order** | No: recommended a `Cancelled` status |
+| #5 Payment | **Simulated payment in scope** | No: recommended deferring it as P2 |
+| #6 Kitchen | Endpoint + optional timer | Yes |
+| #7 Validation | Recommended limits; reject an ineligible SAVE5 | Yes |
+
+### Research for #2 (the user asked how modern systems do it)
+- **Tip base:** Toast defaults to calculating tips **before tax** (it's configurable), and reportedly on
+  the pre-discount total. Square lets the merchant choose before or after tax, and its suggested tips
+  are calculated after discounts. So there's no single standard.
+  - The user asked whether "percentage of the total bill" really means after tax. Answer: it's
+    ambiguous. The brief qualifies every pre-tax amount with "before tax" and uses "bill" only here,
+    which leans post-tax, but industry practice leans pre-tax.
+  - The user chose **pre-tax, configurable**.
+- **Tax on discounts:** store-funded discounts reduce the taxable amount; manufacturer-reimbursed ones
+  don't. Rules vary by state. → Tax applies after the promo discount.
+- **Tips and sales tax:** voluntary tips generally aren't taxable; mandatory service charges are.
+  → The tip isn't taxed.
+- **Rounding:** the half-cent rule rounds up. States require invoice-level or line-level rounding, or
+  allow either; Texas and Florida require invoice-level. → Round half-up, and round tax once per order.
+  **.NET's `Math.Round` defaults to banker's rounding**, so `AwayFromZero` must be explicit. This is a
+  candidate for the README's "verified myself" AI note.
+- Sources:
+  [Toast tip before/after tax](https://support.toasttab.com/en/article/Calculate-tip-before-or-after-taxes),
+  [Toast community on discounts](https://community.toasttab.com/t5/restaurant-operations/how-can-i-make-toast-adjust-the-tip-amount-based-on-the-comped/m-p/16105),
+  [Square tips and tax](https://community.squareup.com/t5/Questions-How-To/Does-Square-calculate-tips-before-or-after-sales-tax/m-p/21890),
+  [Square tips after discounts](https://community.squareup.com/t5/Feature-Requests/Tips-Suggestions-based-on-total-bill-not-post-discounts/idc-p/799250/highlight/true),
+  [TaxJar discounts](https://www.taxjar.com/blog/calculations/2021-12-sales-tax-discounts-coupons-promotions),
+  [Minnesota RN 05-08](https://www.revenue.state.mn.us/sites/default/files/2011-11/RN_05-08.pdf),
+  [Sovos rounding](https://sovos.com/blog/sut/rounding-vs-the-sales-tax-bracket-system/),
+  [NY gratuities](https://www.tax.ny.gov/pubs_and_bulls/tg_bulletins/st/gratuities.htm),
+  [Microsoft Math.Round](https://learn.microsoft.com/el-gr/dotnet/api/system.math.round?view=net-5.0).
+
+### GitHub updates
+- Closed #1–#7, each with a comment linking its decision.
+- Updated the stories these decisions change. #19 (cancel → delete) and #20 (state machine) were
+  rewritten. A "Decision updates (M0)" section was added to #9, #10, #12, #14, #15, #16, #21, #25,
+  #29, #31 and #33.
+- Relabelled #25, #29, #33 from `P2-stretch` → `P1-should`, removed `needs-decision` from #29, and
+  synced the board's Priority field.
+- **Board check:** the closed questions #1–#7 moved to **Done** automatically. #25 was already **In
+  Progress**, set by the UI chat, not this one.
+
+### Open items
+- Plan the first M1 story (#8, the data-driven menu) through the subagent workflow, and publish the
+  menu and quote API contract early for the UI chat.
+- #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.
