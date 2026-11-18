@@ -35,7 +35,11 @@ builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = context =>
     }
 });
 builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()))
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        o.AllowInputFormatterExceptionMessages = false; // don't echo .NET type names back to clients
+    })
     .ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = context =>
     {
         // Malformed JSON or wrong types: same friendly ProblemDetails shape as our own validation errors.
@@ -53,6 +57,7 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseStatusCodePages(); // bodiless errors (e.g. a non-GUID id → 404) also get a ProblemDetails body
 
 // Apply pending EF Core migrations at startup when enabled (Development and docker-compose).
 // See docs/DECISIONS.md: a dedicated migration step would be preferred for production.

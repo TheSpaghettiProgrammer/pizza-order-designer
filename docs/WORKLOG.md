@@ -523,3 +523,11 @@ Mutation checks:
 
 ### Open items
 - One reviewer pass on PR B. PR C (UI) and PR D (README).
+- **Review (opus): CHANGES REQUESTED.**
+  - The Major: an update losing to a cancel returned 500, from an FK violation on the new lines.
+  - Seven Minors.
+  - **All fixed:** a hooked-provider interleaving test for both update races, and a deterministic
+    stale-advance test (**closing the known gap**). Also status-before-version, ProblemDetails for bare
+    404s and JSON errors, a key-length message, the price.changed "nothing stored" assertion, 0 build
+    warnings, and the PUT-retry 412 documented.
+  - **100/100**. Both new tests were mutation-checked.

@@ -128,7 +128,7 @@ Headers: `If-Match: "<version>"`. Body: `OrderDraft` plus `expectedTotal`. Only 
 |---|---|
 | OK | **200** `Order`, re-priced, with a new version |
 | Kitchen already started | **409** `code: order.already_started` |
-| Stale version | **412** `code: order.version_mismatch` (re-fetch, then retry) |
+| Stale version | **412** `code: order.version_mismatch` (re-fetch, then retry). A PUT retried after it already succeeded also gets 412; re-fetching shows the change applied |
 | Price changed | **409** `code: price.changed` |
 | Unknown or deleted | **404** |
 

@@ -10,9 +10,7 @@ namespace PizzaOrderDesigner.Api.Tests.Orders;
 /// </summary>
 public sealed class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:17-alpine")
-        .Build();
+    private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
     public async Task InitializeAsync() => await postgres.StartAsync();
 

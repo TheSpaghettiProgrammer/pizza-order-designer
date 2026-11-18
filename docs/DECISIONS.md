@@ -527,5 +527,9 @@ component tests, #38 CI.
 - **Updates** use `xmin` optimistic concurrency (ETag / If-Match).
 - **Advance doesn't retry** after losing a race: 409 `order.status_changed` (deviation from the plan,
   which said "retry once"), so a stale request can never double-step.
+- **An update that loses a race** returns 404 (cancelled) or 409 (started), never 500. A cancel shows up as
+  a foreign-key violation on the new lines, and an advance as an `xmin` conflict.
+- **A PUT retried after it already succeeded** gets 412, because its ETag is now stale. That's safe (no
+  double effect): the client re-fetches and sees its change applied.
 - *Alternatives:* `SELECT … FOR UPDATE` row locks, or serializable transactions. Both are heavier, with
   no extra guarantee here.

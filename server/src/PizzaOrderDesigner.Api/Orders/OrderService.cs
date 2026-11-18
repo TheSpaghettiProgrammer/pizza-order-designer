@@ -32,9 +32,14 @@ public sealed class OrderService(
 
     public async Task<OrderResult> SubmitAsync(string? idempotencyKey, OrderRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 100)
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
         {
             return OrderResult.Fail(OrderProblems.KeyMissing());
+        }
+
+        if (idempotencyKey.Length > 100)
+        {
+            return OrderResult.Fail(OrderProblems.KeyTooLong());
         }
 
         var hash = RequestHash(request);
@@ -112,14 +117,16 @@ public sealed class OrderService(
             return OrderResult.Fail(OrderProblems.NotFound());
         }
 
-        if (!TryParseETag(ifMatch, out var version) || version != order.Version)
-        {
-            return OrderResult.Fail(OrderProblems.VersionMismatch());
-        }
-
+        // Status first: an edit after the kitchen started is "already started" (409), even though the kitchen's
+        // advance also made the customer's ETag stale. Same order of checks as the conflict handler below.
         if (!OrderStatusFlow.CustomerCanModify(order.Status))
         {
             return OrderResult.Fail(OrderProblems.AlreadyStarted());
+        }
+
+        if (!TryParseETag(ifMatch, out var version) || version != order.Version)
+        {
+            return OrderResult.Fail(OrderProblems.VersionMismatch());
         }
 
         var (breakdown, problem) = await PriceAsync(request, ct);
@@ -135,8 +142,10 @@ public sealed class OrderService(
             // The UPDATE is conditional on the xmin we read: if the kitchen (or anyone) changed the row since, it fails.
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || IsForeignKeyViolation(ex))
         {
+            // Lost a race: the kitchen advanced it (xmin changed → concurrency exception), or the customer cancelled
+            // it (the order row is gone, so inserting the new lines violates their foreign key). Rolled back; re-read.
             db.ChangeTracker.Clear();
             var current = await LoadAsync(id, ct);
             return OrderResult.Fail(current is null ? OrderProblems.NotFound()
@@ -255,6 +264,9 @@ public sealed class OrderService(
 
     private static bool IsUniqueViolation(DbUpdateException ex) =>
         ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    private static bool IsForeignKeyViolation(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation };
 
     public static string ETag(Order order) => $"\"{order.Version.ToString(CultureInfo.InvariantCulture)}\"";
 

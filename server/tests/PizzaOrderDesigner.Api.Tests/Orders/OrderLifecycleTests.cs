@@ -102,13 +102,29 @@ public class OrderLifecycleTests(PostgresApiFactory factory, Xunit.Abstractions.
     }
 
     [Fact]
-    public async Task Submit_rejects_a_total_the_customer_did_not_see()
+    public async Task Submit_rejects_a_total_the_customer_did_not_see_and_stores_nothing()
     {
-        var response = await Submit(Body(expectedTotal: 13.79m));
+        var key = Guid.NewGuid().ToString();
+        var response = await Submit(Body(expectedTotal: 13.79m), key);
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var problem = await Json(response);
         Assert.Equal("price.changed", problem.GetProperty("code").GetString());
         Assert.Equal(13.80m, problem.GetProperty("quote").GetProperty("total").GetDecimal());
+
+        // Nothing was stored for that key, so it can still be used once the customer accepts the real total.
+        Assert.Equal(HttpStatusCode.Created, (await Submit(Body(expectedTotal: 13.80m), key)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Over_long_key_and_non_guid_id_get_problem_details()
+    {
+        var longKey = await Submit(Body(), new string('k', 101));
+        Assert.Equal(HttpStatusCode.BadRequest, longKey.StatusCode);
+        Assert.Equal("idempotency.key_invalid", await Code(longKey));
+
+        var badId = await client.GetAsync("/api/orders/not-a-guid");
+        Assert.Equal(HttpStatusCode.NotFound, badId.StatusCode);
+        Assert.Equal("application/problem+json", badId.Content.Headers.ContentType?.MediaType);
     }
 
     [Fact]
@@ -204,25 +220,26 @@ public class OrderLifecycleTests(PostgresApiFactory factory, Xunit.Abstractions.
         for (var round = 0; round < 25; round++)
         {
             var id = await NewOrderId();
-            var cancel = client.DeleteAsync($"/api/orders/{id}");
-            var start = Advance(id);
-            await Task.WhenAll(cancel, start);
+            var cancelTask = client.DeleteAsync($"/api/orders/{id}");
+            var startTask = Advance(id);
+            var cancel = await cancelTask;
+            var start = await startTask;
 
-            var cancelled = cancel.Result.StatusCode == HttpStatusCode.NoContent;
-            var started = start.Result.StatusCode == HttpStatusCode.OK;
-            Assert.True(cancelled ^ started, $"round {round}: cancel {(int)cancel.Result.StatusCode}, start {(int)start.Result.StatusCode}");
+            var cancelled = cancel.StatusCode == HttpStatusCode.NoContent;
+            var started = start.StatusCode == HttpStatusCode.OK;
+            Assert.True(cancelled ^ started, $"round {round}: cancel {(int)cancel.StatusCode}, start {(int)start.StatusCode}");
 
             var final = await client.GetAsync($"/api/orders/{id}");
             if (cancelled)
             {
                 cancelWins++;
-                Assert.Equal(HttpStatusCode.NotFound, start.Result.StatusCode);
+                Assert.Equal(HttpStatusCode.NotFound, start.StatusCode);
                 Assert.Equal(HttpStatusCode.NotFound, final.StatusCode);
             }
             else
             {
                 startWins++;
-                Assert.Equal(HttpStatusCode.Conflict, cancel.Result.StatusCode);
+                Assert.Equal(HttpStatusCode.Conflict, cancel.StatusCode);
                 Assert.Equal("Started", (await Json(final)).GetProperty("status").GetString());
             }
         }

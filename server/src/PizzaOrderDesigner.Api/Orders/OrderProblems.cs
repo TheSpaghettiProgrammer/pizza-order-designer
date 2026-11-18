@@ -20,6 +20,9 @@ public static class OrderProblems
     public static OrderProblem KeyMissing() => new(400, "idempotency.key_missing",
         "We couldn't send your order.", "The request is missing its Idempotency-Key header.");
 
+    public static OrderProblem KeyTooLong() => new(400, "idempotency.key_invalid",
+        "We couldn't send your order.", "The Idempotency-Key header must be at most 100 characters.");
+
     public static OrderProblem Invalid(IReadOnlyDictionary<string, string[]> errors) => new(400, "order.invalid",
         "Please check your order.", "Some items in your order need attention.", errors);
 
