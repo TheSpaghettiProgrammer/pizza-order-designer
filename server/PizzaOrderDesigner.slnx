@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PizzaOrderDesigner.Api/PizzaOrderDesigner.Api.csproj" />
+    <Project Path="src/PizzaOrderDesigner.Data/PizzaOrderDesigner.Data.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PizzaOrderDesigner.Api.Tests/PizzaOrderDesigner.Api.Tests.csproj" />
+  </Folder>
+</Solution>

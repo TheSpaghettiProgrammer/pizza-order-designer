@@ -1,0 +1,45 @@
+# Full stack:      docker compose up --build      -> http://localhost:8080
+# Local dev DB:    docker compose up -d db        (then run the API and Vite on the host)
+#
+# Credentials below are local-development defaults only; override via a .env file.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pizza_order_designer}
+      POSTGRES_USER: ${POSTGRES_USER:-pizza}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pizza_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./server
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__PizzaDb: Host=db;Port=5432;Database=${POSTGRES_DB:-pizza_order_designer};Username=${POSTGRES_USER:-pizza};Password=${POSTGRES_PASSWORD:-pizza_dev};Gss Encryption Mode=Disable
+      Database__ApplyMigrationsOnStartup: "true"
+    ports:
+      - "5080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./client
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

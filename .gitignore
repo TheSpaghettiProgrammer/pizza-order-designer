@@ -1,0 +1,5 @@
+# Root-level ignores; client/ and server/ have their own .gitignore files
+.env
+.vs/
+.idea/
+*.log

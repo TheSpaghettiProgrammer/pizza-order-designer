@@ -1,0 +1,38 @@
+# Pizza Order Designer — working agreements
+
+This is a job-interview take-home. The user wants **every action and decision tracked**.
+
+## Tracking (mandatory, for the main session and every subagent)
+- **docs/DECISIONS.md**: add a `D-xxx` row to the index table and a section (Decision / Why /
+  Alternatives or Trade-off) for every meaningful technical or process decision, including ones the
+  user makes. Never silently change a decision: mark the old one `Superseded by D-xxx`.
+- **docs/WORKLOG.md**: append to the current session's entry what was done, problems hit and how they
+  were fixed, verification results, and open items. Start a new dated `## Session N` heading for each
+  new working session.
+- Keep README.md's run instructions accurate whenever setup changes.
+
+## Stack and layout
+- `server/`: .NET 10 (`global.json` pins SDK 10.0.404), `PizzaOrderDesigner.slnx`
+  - `src/PizzaOrderDesigner.Api`: controllers, DI, health checks, migrate-on-startup flag
+  - `src/PizzaOrderDesigner.Data`: `PizzaDbContext`, `IEntityTypeConfiguration` classes, migrations
+  - `tests/PizzaOrderDesigner.Api.Tests`: xUnit
+- `client/`: Quasar 2 CLI (`@quasar/app-vite`, `quasar.config.ts`) + Vue 3.5 + TypeScript, Router
+  (history mode), Pinia, ESLint + Prettier. Vitest via `@quasar/testing-unit-vitest`, with tests in
+  `client/test/vitest/__tests__/`. Dev server on :9000. Build output is `dist/spa`.
+- `docker-compose.yml`: `db` (postgres:17), `api` (:5080), `web` (nginx, :8080)
+
+## Conventions
+- EF Core packages stay on **10.0.x** (EF 11 targets net11 only). Pin versions explicitly.
+- Entity mappings go in `IEntityTypeConfiguration<T>` classes in the Data project, not in `OnModelCreating`.
+- The frontend calls relative `/api/...` only (proxied by `quasar.config.ts` devServer in dev, nginx in
+  containers). No CORS.
+- Use Quasar components (`q-*`) and the Quasar CLI (`npx quasar ...`). Quasar's API docs are at
+  https://quasar.dev.
+- Migrations, from `server/`: `dotnet ef migrations add <Name> -p src/PizzaOrderDesigner.Data -s src/PizzaOrderDesigner.Api`
+
+## Environment quirks (this machine)
+- Host Node 24.22.1 / npm 12.2.3 (global npm lives in `%APPDATA%\npm`). npm 12 blocks dependency
+  install scripts by default. The `@parcel/watcher` warning is harmless.
+- Docker Desktop 4.99. An older 4.58 crashed on stale AF_UNIX sockets in `%LOCALAPPDATA%\Docker\run` and
+  `%LOCALAPPDATA%\docker-secrets-engine`. If that recurs, rename the folder aside while Docker is stopped.
+- Not a git repo yet. Don't `git init` until the user asks.
