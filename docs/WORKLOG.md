@@ -647,3 +647,32 @@ README's Tests section now lists the script.
 - **The AI note was rewritten with exact attribution.** It now says what the user decided and verified,
   what Claude implemented and checked (mutation checks, the 25/25 race finding), and what the review
   subagents caught. The time section was finalized: ~20:18–22:35, about 2 h 15 m.
+
+---
+
+## 2026-11-17 — Session 11: time-spent correction
+
+**Follow-up to Session 10.** Session 10 set the README's time line to "~20:18–22:35, about 2 h 15 m".
+A review against the repo's own history showed that was wrong:
+- the .NET 10 SDK install (the first setup step) started at **19:24**,
+- the first commit, already containing the brief, landed at **19:57**,
+- issue #1 was created at 20:02,
+- the last merge (#52) was at **22:32**,
+- and the old phase rows (55 m + 1 h 10 m + 15 m) added up to 2 h 20 m, not the stated 2 h 15 m.
+
+**The user's decision:** count everything from 19:24, about **3 h 10 m**, slightly over the box.
+
+**README:** the time section now lists the evidence and four phases with clock ranges that add up:
+| Phase | When | Time |
+|---|---|---|
+| Environment setup | 19:24–19:57 | ~35 m |
+| Planning | 19:57–21:13 | ~1 h 15 m |
+| Build and verify | 21:13–22:17 | ~1 h 05 m |
+| Final pass | 22:17–22:32 | ~15 m |
+
+21:13 is backed by the commits on either side of the process reset (21:11 and 21:14). The README also
+says what's left out: the discarded #31 edit-UI attempt after 22:32 (about 15 m, never pushed), and
+this correction.
+
+**#31 note:** the user stopped the edit-UI work partway through. The local code and its one unpushed
+commit were discarded. The story stays open as a documented next step.

@@ -291,18 +291,26 @@ moved it to Preparing.
 
 ## Time spent
 
-One evening, starting at about **20:18**. The submission was finalized at about **22:35**, so the total
-is about **2 h 15 m**: inside the 3-hour box.
+One evening, **19:24 to 22:32**, about **3 h 10 m** in total. That's **slightly over the 3-hour box**.
+The times come from the repo's own history:
+- 19:24: the .NET 10 SDK install, the first step,
+- 19:57: the first commit, which already contains the brief,
+- 21:13: the process reset (D-046),
+- 22:32: the last merge, #52.
 
-| Phase | Time |
-|---|---|
-| Setup and planning: tooling (SDK and Docker issues), repo, board, backlog, decision log, subagent workflow, M0 questions with research | ~55 m |
-| Build and verify: #25 kiosk start, pricing core (PR A), order service (PR B), UI (PR C), one review per PR plus fixes, README | ~1 h 10 m |
-| Final pass: #48 nginx fix with a compose smoke test, `.http` examples, my own verification checks, README corrections | ~15 m |
+| Phase | When | Time |
+|---|---|---|
+| Environment setup: .NET 10 SDK install, a Docker Desktop startup fix, blank .NET + Quasar scaffolds, docker-compose | 19:24–19:57 | ~35 m |
+| Planning: brief → Markdown, repo + board, 38-issue backlog, decision log, subagent workflow, M0 questions with research, the #25 plan (four-role flow) | 19:57–21:13 | ~1 h 15 m |
+| Build and verify: #25, pricing core (PR A), order service (PR B), UI (PR C), one independent review per PR plus fixes, README (PR D) | 21:13–22:17 | ~1 h 05 m |
+| Final pass: #48 nginx fix with a compose smoke test, `.http` examples, my own verification in the browser, the AI-note rewrite | 22:17–22:32 | ~15 m |
 
-The setup phase took longer than the problem needed, with a four-role subagent flow and an 871-line plan
-for one screen. Partway through I reset it (D-046): batched PRs, one independent review per PR, and the
-cut list above. Several AI subagents ran in parallel during the build phase.
+Not counted above: about 15 minutes after 22:32 on a #31 "edit a placed order" UI that I chose not to
+ship (it was discarded and never pushed), and this correction to the time section.
+
+The overrun came from planning, which was heavier than the problem needed: a four-role subagent flow and
+an 871-line plan for one screen. At 21:13 I reset it (D-046): batched PRs, one independent review per PR,
+and the cut list above. Several AI subagents ran in parallel during the build phase.
 
 ## Working on the repo
 
