@@ -37,7 +37,8 @@ or **Open** (decided provisionally, revisit later).
 | D-029 | 2026-11-17 | Open questions are `needs-decision` issues with a recommendation; resolved answers become README assumptions | Accepted |
 | D-030 | 2026-11-17 | Four-role subagent workflow (planner → plan reviewer → developer → reviewer) with two user gates | Accepted |
 | D-031 | 2026-11-17 | One plan file per story in `docs/plans/`, the single artifact every role writes to | Accepted |
-| D-032 | 2026-11-17 | Branch per story (`story/<N>-<slug>`), PR with `Closes #N`, user merges | Accepted |
+| D-032 | 2026-11-17 | Branch per story (`story/<N>-<slug>`), PR with `Closes #N`, user merges | Superseded by D-033 |
+| D-033 | 2026-11-17 | No direct pushes to `main`: every change goes through a feature branch + PR the user merges, enforced by a pre-push hook | Accepted |
 
 ---
 
@@ -296,9 +297,27 @@ own section, and later rounds are appended, never overwritten.
 plans in the editor and gives concrete evidence for the README's AI usage note (what the AI proposed,
 what review caught, what was fixed).
 
-### D-032 — Branch and PR per story
+### D-032 — Branch and PR per story (Superseded by D-033)
 **Decision:** The work for story #N happens on `story/<N>-<slug>`. The developer commits locally in
 small, logical steps (`Refs #N`). The orchestrator pushes and opens a PR ending with `Closes #N`, and the
 user merges it. Then the board item moves to Done.
 **Why:** It gives a readable commit history (graded under *Judgment*), a natural review point, and
 issues that auto-close. Parallel stories run in separate git worktrees.
+
+### D-033 — Feature branches and PRs for everything; `main` is never pushed to directly
+**Decision (the user's):** No direct pushes to `main`, for code, docs and process changes alike. The
+flow is: feature branch → PR → the user reviews → the user merges on GitHub → local `main` is
+fast-forwarded. This extends D-032 to all changes.
+- **Branch names:** `story/<N>-<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`.
+- **Merge method:** create a merge commit, so the step commits stay visible. Delete the branch after
+  merging.
+- **Enforcement:** GitHub branch protection and rulesets aren't available for private repos on the free
+  plan (the API returned 403, "Upgrade to GitHub Pro or make this repository public"). Instead, a
+  committed `.githooks/pre-push` hook rejects any push whose target is `refs/heads/main`, enabled with
+  `git config core.hooksPath .githooks`. `.gitattributes` keeps the hook's LF line endings on Windows.
+  Bypassing it with `--no-verify` is forbidden for humans and agents alike.
+**History note:** the first four commits (skeleton, tracking docs, board link, subagent docs) were pushed
+straight to `main` before this rule existed. Everything after goes through PRs, starting with this
+change (`chore/feature-branch-workflow`).
+**Alternatives:** GitHub Pro, or a public repo, would allow real server-side protection (required PR,
+no force push). That's worth it if the repo is made public for the submission.

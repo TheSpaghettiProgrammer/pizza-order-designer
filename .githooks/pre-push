@@ -1,0 +1,22 @@
+#!/bin/sh
+# Refuse direct pushes to main. All changes reach main through a feature branch + pull request
+# that the repo owner reviews and merges on GitHub (see docs/DECISIONS.md D-033).
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+#
+# Git passes one line per ref being pushed on stdin:
+#   <local ref> <local sha> <remote ref> <remote sha>
+
+protected="refs/heads/main"
+status=0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "$protected" ]; then
+    echo "pre-push: direct pushes to 'main' are not allowed." >&2
+    echo "pre-push: push a feature branch (story/<N>-<slug>, chore/<slug>, docs/<slug>, fix/<slug>)" >&2
+    echo "pre-push: and open a pull request instead:  gh pr create --base main" >&2
+    status=1
+  fi
+done
+
+exit $status

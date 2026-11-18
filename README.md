@@ -57,6 +57,15 @@ dotnet test server/PizzaOrderDesigner.slnx
 npm --prefix client test
 ```
 
+### Contributing workflow
+
+`main` only changes through pull requests: create a feature branch, open a PR, review it, merge it. Enable
+the repo's hook once per clone so an accidental push to `main` is rejected:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ### Adding a migration
 
 From `server/`:

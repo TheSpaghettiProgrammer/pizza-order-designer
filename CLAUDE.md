@@ -43,6 +43,11 @@ This is a job-interview take-home. The user wants **every action and decision tr
   items through Status (Todo → In Progress → Done) as work progresses. Labels: `story` / `question` /
   `needs-decision`; `P0-required` / `P1-should` / `P2-stretch`; `area:*`. Milestones: M0 Decisions →
   M4 Quality & deliverables.
+- **Never push or commit to `main`.** Every change (code, docs, process) goes through a feature branch
+  (`story/<N>-<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`) → `gh pr create --base main` → the
+  user reviews and merges (merge commit, branch deleted). Then `git switch main; git pull --ff-only`.
+  A committed `.githooks/pre-push` hook enforces this (`git config core.hooksPath .githooks`). Never
+  bypass it.
 - Small, meaningful commits that reference issues (`Refs #N`, `Closes #N`). Commit history is graded.
 - Answers to M0 questions (#1–#7) become `D-xxx` entries and README **Assumptions**. Don't build
   anything that depends on an unanswered question without flagging it.

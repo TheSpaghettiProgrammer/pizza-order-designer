@@ -30,7 +30,7 @@ conversation with the user, briefs each subagent, checks its output, and keeps t
 
 | Role | Agent | Model | Can change | Input | Output |
 |---|---|---|---|---|---|
-| **Orchestrator** | main session | session model | anything; owns git, GitHub, the logs | the user's request | briefs, commits, PRs, log updates |
+| **Orchestrator** | main session | session model | feature branches, GitHub issues/PRs, the logs; **never pushes to `main`** | the user's request | briefs, commits, PRs, log updates |
 | **Plan developer** | `pizza-planner` | opus | **only** its plan file | the story + context | the *Plan* section of `docs/plans/<N>-<slug>.md` |
 | **Plan reviewer** | `pizza-plan-reviewer` | opus | **only** the *Plan review* section | the plan file + story | verdict **APPROVE / REVISE** + findings |
 | **Developer** | `pizza-developer` | sonnet (opus for complex stories) | code, tests, docs the plan names; local commits on the story branch | the approved plan | code + tests + *Implementation notes* |
@@ -85,10 +85,29 @@ flowchart TD
 | 7 | Orchestrator | On **CHANGES REQUESTED**, send the findings to the developer (step 5), at most 2 rounds. | Verdict is **PASS** |
 | 8 | Orchestrator | Re-run the checks itself (don't just trust the report). Add `D-xxx` entries for any new decisions. Update `WORKLOG.md`. Push the branch. Open a PR whose body summarizes the plan and links the plan file, ending with `Closes #N`. | PR open, CI green (once #38 exists) |
 | 9 | User | Review and merge the PR. | **Gate 2.** The issue auto-closes; the orchestrator moves the board item to **Done** |
+| 10 | Orchestrator | `git switch main; git pull --ff-only; git branch -d story/<N>-<slug>`. | Local `main` matches `origin/main` |
 
-**Small changes:** for a typo, a doc fix or a one-line config change, the orchestrator may skip steps 2–4
-and say so in the WORKLOG. Anything touching pricing, the order lifecycle or the API always gets the
-full flow.
+**Small changes:** for a typo, a doc fix or a one-line config change, the orchestrator may skip the
+planning steps (2–4) and say so in the WORKLOG. It still uses a branch and a PR; nothing skips those.
+Anything touching pricing, the order lifecycle or the API always gets the full flow.
+
+### Branches, PRs and merging (D-033)
+- **Nothing is pushed to `main`, ever.** Every change, including docs and process changes, goes:
+  feature branch → PR → the user reviews → the user merges on GitHub.
+- **Branch names:**
+  - `story/<N>-<slug>`: a backlog story
+  - `fix/<slug>`: a bug fix (add `-<N>` if it has an issue)
+  - `docs/<slug>`: docs only
+  - `chore/<slug>`: tooling or process
+- **One concern per branch.** Branch from an up-to-date `main`. If `main` moves on, the orchestrator
+  merges `main` into the branch rather than rebasing a branch that's already been pushed.
+- **PR body:** what changed and why, a link to the plan file (stories), the checks run with their
+  results, and `Closes #N` (stories) or `Refs #N`.
+- **Merge method:** **Create a merge commit**, so the step-by-step commits from the story stay visible
+  in history, which is graded. Delete the branch after merging.
+- **Enforcement:** the repo's free plan can't protect a private branch on GitHub, so a committed
+  `.githooks/pre-push` hook rejects any push to `main`. Enable it once per clone with
+  `git config core.hooksPath .githooks`. Never bypass it (`--no-verify` is forbidden).
 
 **Parallel stories:** stories with no shared files and no `Depends on` link can run at the same time.
 Each developer then runs with `isolation: "worktree"`, so it gets its own checkout and branch. Planners and
@@ -194,7 +213,8 @@ without running it.
   `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 
 ### Never
-- Push, merge, rebase `main`, force anything, or touch other branches.
+- Push, merge, rebase `main`, force anything, or touch other branches. Never commit on `main`, and
+  never use `--no-verify`.
 - Create, close or edit GitHub issues or PRs (read-only `gh` is fine).
 - Edit `docs/DECISIONS.md` or `docs/WORKLOG.md`. Propose entries in your report instead.
 - Add a dependency, pattern or project the plan doesn't name. Ask first.
