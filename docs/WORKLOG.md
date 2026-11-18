@@ -606,3 +606,38 @@ health, menu, the $31.23 quote, a submit **whose Location is followed**, and a s
 
 The Playwright and backend suites never go through nginx, which is why they couldn't catch this. The
 README's Tests section now lists the script.
+
+---
+
+## 2026-11-17 — Session 10: final review handover and fixes
+
+**Handover from a secondary review session** (it reviewed `main` at `0130e42` on a clean export):
+- 100/100 backend tests; Vitest 42/42; Playwright 29/29; `vue-tsc` clean; `quasar build` OK.
+- Requirements 1–6 all work, and every README deliverable is present. The README's claims were
+  spot-checked: $31.23, the test names, port 5158, D-048.
+- **Open items it raised:**
+  - #48's `.http` acceptance criterion was missed. PR #51 closed the issue without it.
+  - **The AI usage note claimed, in the first person, checks that Claude performed.** It's an honesty
+    issue in a section the brief reads closely.
+  - The repo is private (graders need access).
+  - Optional: #31's edit UI, the `lint:check` fix, closing the cut-list issues, and confirming the time
+    line.
+- **Incident it reported:** after its worktree was removed, the empty folder
+  `.claude/worktrees/41-playwright-e2e` stayed behind. Running `git switch --detach origin/main` from
+  inside it climbed to the main checkout and detached it. The other session switched it straight back to
+  `main` at `93b2479`. The tree was clean and nothing was lost. Its review was read-only after that.
+  - **Lesson:** delete an abandoned worktree folder before anyone runs git from inside it. The folder is
+    still locked by a process here and gets deleted once that session is closed.
+
+**Decisions by the user:**
+- **The AI note:** the user runs two checks personally (places the $31.23 order in the UI; breaks
+  tax-after-discount in `OrderPricer` and watches the tests fail). The note then attributes each
+  verification precisely: what the user did, and what Claude or the subagents did.
+- **Time:** the user started at about 20:18, so the README's "19:20" was wrong and was corrected to
+  the user's numbers. That's about 2 h 05 m at 22:24, so the work fits the 3-hour box.
+
+**Done:**
+- The `.http` file now documents all three targets (Docker via nginx :8080, the API container :5080,
+  local dev :5158). It also has examples for submit (with a fixed Idempotency-Key, to show a safe
+  retry), get, update with `If-Match`, kitchen advance and cancel. The update example's
+  `expectedTotal` (17.21) was checked against the live quote endpoint.

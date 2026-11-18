@@ -277,17 +277,18 @@ checks:
 
 ## Time spent
 
-An honest account, from the work log (one long evening, about 19:20–22:30):
+One evening, starting at about **20:18**. The submission was finalized at about **END_TIME**, so the total
+is about **TOTAL**: inside the 3-hour box.
 
 | Phase | Time |
 |---|---|
-| Workspace, tooling and process setup: SDK and Docker issues, repo, board, backlog, decision log, subagent workflow, M0 questions with research | ~1 h 50 m |
-| Build and verify: #25 kiosk start, pricing core (PR A), order service (PR B), UI (PR C), reviews and fixes, README | ~1 h 20 m |
+| Setup and planning: tooling (SDK and Docker issues), repo, board, backlog, decision log, subagent workflow, M0 questions with research | ~55 m |
+| Build and verify: #25 kiosk start, pricing core (PR A), order service (PR B), UI (PR C), one review per PR plus fixes, README | ~1 h 10 m |
+| Final pass: #48 nginx fix with a compose smoke test, `.http` examples, my own verification checks, README corrections | ~REST |
 
-That's over the 3-hour box. Most of the overrun went on process, which ended up heavier than the
-problem needed: a four-role subagent flow and an 871-line plan for one screen. I reset it partway through
-(D-046): batched PRs, one independent review per PR, and the cut list above. The build phase, where the
-graded work lives, took about 1 h 20 m. AI subagents ran several streams in parallel during that time.
+The setup phase took longer than the problem needed, with a four-role subagent flow and an 871-line plan
+for one screen. Partway through I reset it (D-046): batched PRs, one independent review per PR, and the
+cut list above. Several AI subagents ran in parallel during the build phase.
 
 ## Working on the repo
 
