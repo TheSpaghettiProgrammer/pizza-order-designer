@@ -4,7 +4,7 @@
 |---|---|
 | **Story** | https://github.com/TheSpaghettiProgrammer/pizza-order-designer/issues/25 |
 | **Branch** | `story/25-kiosk-start-screen` (#42 and #43 merged into `main`; `main` merged into this branch) |
-| **Status** | **Awaiting user approval (Gate 1).** Plan review round 2 = APPROVE; 4 Minors for the developer to fold in |
+| **Status** | **Approved by the user (Gate 1, 2026-11-17 21:13)**, as written. In development. Plan review round 2 = APPROVE; 4 Minors for the developer to fold in. D-044/D-045 recorded |
 | **Depends on** | #41 (Playwright harness, merged). **Follow-up:** #44 (idle timeout) builds on this story |
 | **Decisions** | D-011 (same-origin `/api`), D-020 (Quasar CLI), D-024 (history router), D-025 (strip demo content), D-034 (Playwright E2E), D-035 (UI work order), D-037 (full kiosk scope), D-043 (validation limits, one promo code) |
 
