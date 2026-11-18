@@ -16,7 +16,9 @@
     "test": "vitest run",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run",
-    "test:unit:ui": "vitest --ui"
+    "test:unit:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@quasar/extras": "^2.1.0",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.65.1",
     "@quasar/app-vite": "^3.10.4",
     "@quasar/quasar-app-extension-testing-unit-vitest": "^3.0.0",
     "@types/node": "^22.19.11",
