@@ -67,6 +67,30 @@ public class QuoteEndpointTests(QuoteEndpointTests.Factory factory) : IClassFixt
         Assert.Contains("\"total\":5.33", json); // 5.00 + 0.325 → 0.33 tax
     }
 
+    [Theory]
+    [InlineData("5", "5.00")]
+    [InlineData("2.5", "2.50")]
+    public async Task Amount_tips_are_sent_with_two_decimals(string typed, string expected)
+    {
+        var response = await client.PostAsJsonAsync("/api/orders/quote", new
+        {
+            lines = new[] { new { sizeCode = "small", toppingCodes = Array.Empty<string>(), quantity = 1 } },
+            tip = new { mode = "amount", value = typed },
+        });
+        Assert.Contains($"\"tip\":{expected}", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Malformed_json_gets_the_same_friendly_problem_shape()
+    {
+        var response = await client.PostAsync("/api/orders/quote",
+            new StringContent("{\"lines\": [{\"sizeCode\": \"small\", \"quantity\": \"lots\"}]}", System.Text.Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("request.invalid", doc.RootElement.GetProperty("code").GetString());
+        Assert.Equal("We couldn't read that request.", doc.RootElement.GetProperty("title").GetString());
+    }
+
     [Fact]
     public async Task Invalid_order_is_a_400_problem_with_field_errors_code_and_trace_id()
     {

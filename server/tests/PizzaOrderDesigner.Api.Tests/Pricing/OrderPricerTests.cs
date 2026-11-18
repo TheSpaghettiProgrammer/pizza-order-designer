@@ -49,6 +49,22 @@ public class OrderPricerTests
     }
 
     [Fact]
+    public void Percent_tip_is_on_the_discounted_pre_tax_amount_with_SAVE5()
+    {
+        // 4 × Large = 48.00, SAVE5 → 43.00; tip 20% of 43.00 = 8.60; tax 2.795 → 2.80
+        var b = Pricer().Price(Draft([Line("large", 4)], "SAVE5", Percent("20")), menu).Priced();
+        Assert.Equal(8.60m, b.Tip);
+        Assert.Equal(54.40m, b.Total);
+    }
+
+    [Fact]
+    public void A_null_line_is_a_field_error_not_a_crash()
+    {
+        var r = Pricer().Price(new OrderDraft { Lines = [Line("small"), null!] }, menu);
+        Assert.Equal(["This item is empty."], r.Errors["lines[1]"]);
+    }
+
+    [Fact]
     public void Tip_as_a_dollar_amount_is_added_untaxed()
     {
         var b = Pricer().Price(Draft([Line("large")], tip: Amount("2.50")), menu).Priced();

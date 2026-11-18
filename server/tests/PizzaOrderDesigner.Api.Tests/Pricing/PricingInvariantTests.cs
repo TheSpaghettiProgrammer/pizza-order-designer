@@ -37,10 +37,11 @@ public class PricingInvariantTests
             var b = result.Breakdown!;
             priced++;
 
-            // 1. Every amount is whole cents.
+            // 1. Every amount is whole cents and carries exactly two decimals (so JSON shows 5.00, never 5 or 2.5).
             foreach (var amount in Amounts(b))
             {
                 Assert.True(Money.HasAtMostTwoDecimals(amount), $"order {i}: {amount} has more than 2 decimals");
+                Assert.True(amount.Scale == 2, $"order {i}: {amount} has scale {amount.Scale}, expected 2");
             }
 
             // 2. The total is exactly the sum of its displayed parts (what the customer sees adds up).
@@ -100,7 +101,7 @@ public class PricingInvariantTests
         TipInput? tip = random.Next(3) switch
         {
             0 => null,
-            1 => Amount($"{random.Next(0, 5000) / 100m:0.00}"),
+            1 => Amount(random.Next(4) == 0 ? $"{random.Next(0, 50)}" : $"{random.Next(0, 5000) / 100m:0.##}"), // "5", "2.5", "3.25"
             _ => Percent($"{random.Next(0, 3001) / 100m:0.##}"),
         };
         return Draft(lines, promo, tip);

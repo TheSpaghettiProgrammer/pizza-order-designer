@@ -47,7 +47,7 @@ public sealed class AmountOffOverThresholdRule : IPromotionRule
             ?? throw new InvalidOperationException($"Promotion {promotion.Code} ({RuleType}) has no Amount.");
         var threshold = promotion.MinSubtotalExclusive ?? 0m;
         return context.Subtotal > threshold
-            ? PromotionOutcome.Applies(amount)
-            : PromotionOutcome.NotEligible($"{promotion.Code} needs an order over ${threshold:0.00} before tax.");
+            ? PromotionOutcome.Applies(Money.RoundToCents(amount))
+            : PromotionOutcome.NotEligible($"{promotion.Code} needs an order over {Money.Format(threshold)} before tax.");
     }
 }
