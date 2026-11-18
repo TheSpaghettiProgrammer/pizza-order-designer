@@ -1,14 +1,20 @@
-@PizzaOrderDesigner.Api_HostAddress = http://localhost:5158
+# Runnable examples for the order service (docs/API.md has the full contract).
+#
+# Pick the target by changing @host:
+#   Docker (docker compose up --build), through nginx:  http://localhost:8080
+#   Docker, API container directly:                      http://localhost:5080
+#   Local dev (dotnet run, http profile):                http://localhost:5158
+@host = http://localhost:8080
 
 ### Health (API + database)
-GET {{PizzaOrderDesigner.Api_HostAddress}}/api/health
+GET {{host}}/api/health
 
 ### Menu: sizes, topping categories, per-size topping prices
-GET {{PizzaOrderDesigner.Api_HostAddress}}/api/menu
+GET {{host}}/api/menu
 Accept: application/json
 
 ### Quote: the API contract's worked example → total 31.23
-POST {{PizzaOrderDesigner.Api_HostAddress}}/api/orders/quote
+POST {{host}}/api/orders/quote
 Content-Type: application/json
 
 {
@@ -18,7 +24,7 @@ Content-Type: application/json
 }
 
 ### Quote: SAVE5 on an order that isn't over $20 → 400 with a field error
-POST {{PizzaOrderDesigner.Api_HostAddress}}/api/orders/quote
+POST {{host}}/api/orders/quote
 Content-Type: application/json
 
 {
@@ -27,6 +33,43 @@ Content-Type: application/json
   "tip": { "mode": "amount", "value": "2.50" }
 }
 
-### OpenAPI document (Development)
-GET {{PizzaOrderDesigner.Api_HostAddress}}/openapi/v1.json
+### Submit: 201 + Location + ETag. Send it again with the SAME key → 200 and the same order (safe retry).
+# Change the key to place another order. expectedTotal must equal the quote's total (else 409 price.changed).
+POST {{host}}/api/orders
+Content-Type: application/json
+Idempotency-Key: 6f1c2b7e-0000-4000-8000-000000000001
+
+{
+  "lines": [ { "sizeCode": "large", "toppingCodes": ["pepperoni", "bacon"], "quantity": 2 } ],
+  "promoCode": "ILOVEPIZZA",
+  "tip": { "mode": "percent", "value": "15" },
+  "expectedTotal": 31.23
+}
+
+### For the requests below: paste the id from the submit response (or follow its Location header)
+@orderId = 00000000-0000-0000-0000-000000000000
+
+### Get the order and its status (the ETag header is its version)
+GET {{host}}/api/orders/{{orderId}}
+
+### Update while NotStarted: If-Match must be the ETag from GET (stale → 412; started → 409)
+PUT {{host}}/api/orders/{{orderId}}
+Content-Type: application/json
+If-Match: "<etag from GET>"
+
+{
+  "lines": [ { "sizeCode": "large", "toppingCodes": ["pepperoni", "bacon"], "quantity": 1 } ],
+  "promoCode": null,
+  "tip": { "mode": "amount", "value": "2.00" },
+  "expectedTotal": 17.21
+}
+
+### Kitchen: advance to the next status (NotStarted → Started → ReadyForPickup → Delivered)
+POST {{host}}/api/kitchen/orders/{{orderId}}/advance
+
+### Cancel = delete, only while NotStarted (204; then 404. After the kitchen starts → 409)
+DELETE {{host}}/api/orders/{{orderId}}
+
+### OpenAPI document (Development only: local dev on 5158)
+GET http://localhost:5158/openapi/v1.json
 Accept: application/json

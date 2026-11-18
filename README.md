@@ -247,47 +247,62 @@ Playwright. The key guarantees were mutation-checked: breaking each one makes it
 
 ## AI usage note
 
-**Tools.** Claude Code (Claude Opus 5.5) was the main driver: scaffolding, the backend, the docs, and
-web research into how POS systems handle tip bases and tax on discounts (that research shaped D-038).
-Subagents with written contracts ([docs/SUBAGENTS.md](docs/SUBAGENTS.md)) did planning and independent
-**code review** on opus, and UI implementation on sonnet. Every PR got one independent review pass before
-I saw it. All decisions, mine and the AI's, are logged in [docs/DECISIONS.md](docs/DECISIONS.md), and the
-process in [docs/WORKLOG.md](docs/WORKLOG.md).
+**Tools and who did what.** I directed the work and **Claude Code** (Claude Opus 5.5) wrote nearly all of
+the code, tests and docs:
+- the scaffolding, the backend, and most of the UI,
+- web research into how POS systems handle tip bases and tax on discounts (that research shaped D-038).
 
-**AI output I rejected or had to fix.** The first concurrency test for "cancel vs kitchen start" fired
-both HTTP requests in parallel and passed. When I logged which side won, the cancel had won **25 of 25**
-rounds. The test never exercised "kitchen wins", and a deliberately broken `DELETE` (no status check)
-still passed it. I replaced it with deterministic tests that hold one side's row lock in an open
-transaction and prove the other side waits, then loses cleanly, in both orderings. The reviews also
-caught real bugs in AI-written code that the AI's own tests had missed:
+Claude ran subagents with written contracts ([docs/SUBAGENTS.md](docs/SUBAGENTS.md)): planning and an
+independent **code review** on opus, and UI implementation on sonnet. **My part:**
+- choosing the stack and the process,
+- answering every open question (rounding, tip base, cancel = delete, scope),
+- cutting scope when the process got too heavy (D-046),
+- reviewing and merging every PR.
+
+Every decision is logged with who made it in [docs/DECISIONS.md](docs/DECISIONS.md), and the step-by-step
+history is in [docs/WORKLOG.md](docs/WORKLOG.md).
+
+**AI output that was rejected or fixed.** Claude's first concurrency test for "cancel vs kitchen start"
+fired both HTTP requests in parallel, and it passed. When Claude logged which side won, the cancel had won
+**25 of 25** rounds, so the test never exercised "kitchen wins". A deliberately broken `DELETE` (no status
+check) still passed it. That test was kept but no longer trusted. Deterministic tests replaced it as the
+proof: they hold one side's row lock in an open transaction, show the other side waits, then show it
+loses cleanly, in both orderings. The independent review subagents also caught bugs in AI-written code
+that its own tests had missed:
 - an amount tip of "5" serialized as `5`, not `5.00`,
-- an update losing a race to a cancel returned 500 instead of 404.
+- an update losing a race to a cancel returned 500 instead of 404,
+- two UI paths that could have placed a duplicate order after a lost response (fixed by locking the
+  order, D-048).
 
-Both were fixed with tests that fail without the fix.
+Each was fixed with a test that fails without the fix (mutation-checked by Claude).
 
-**An invariant I verified myself.** "The total is what the server charges, with exact rounding." Three
-checks:
-- **Mutation testing:** I made the pricer tax the pre-discount subtotal and watched 5 tests fail
-  (including the 500-order invariant run). I also removed the scale-2 fix and watched 4 fail.
-- **A documented trap:** I confirmed that .NET's default `Math.Round(0.125m, 2)` gives `0.12`, banker's
-  rounding. A test documents it, and money uses `AwayFromZero`.
-- **By hand, end to end:** I built the contract's worked example in the real UI against the real API and
-  Postgres: 2 × Large (pepperoni, bacon), ILOVEPIZZA, 15% tip → **$31.23**. That matches the hand
-  calculation (2.856 → 2.86, 1.6705 → 1.67, 3.855 → 3.86).
+**What I verified myself.** I ran the contract's worked example through the running Docker stack in the
+browser: 2 × Large (pepperoni, bacon), ILOVEPIZZA, 15% tip. The UI showed **$31.23**, which matches the
+hand calculation:
+- subtotal $28.56,
+- discount 2.856 → $2.86,
+- tax 6.5% of $25.70 = 1.6705 → $1.67,
+- tip 15% of $25.70 = 3.855 → $3.86.
+
+That's the "one source of truth" invariant end to end: the total the UI showed came from the server and
+matched an independent calculation. I placed the order and watched the lifecycle rule hold. **Cancel
+this order** was offered only while the order was Not Started, and disappeared when the kitchen timer
+moved it to Preparing.
 
 ## Time spent
 
-An honest account, from the work log (one long evening, about 19:20–22:30):
+One evening, starting at about **20:18**. The submission was finalized at about **22:35**, so the total
+is about **2 h 15 m**: inside the 3-hour box.
 
 | Phase | Time |
 |---|---|
-| Workspace, tooling and process setup: SDK and Docker issues, repo, board, backlog, decision log, subagent workflow, M0 questions with research | ~1 h 50 m |
-| Build and verify: #25 kiosk start, pricing core (PR A), order service (PR B), UI (PR C), reviews and fixes, README | ~1 h 20 m |
+| Setup and planning: tooling (SDK and Docker issues), repo, board, backlog, decision log, subagent workflow, M0 questions with research | ~55 m |
+| Build and verify: #25 kiosk start, pricing core (PR A), order service (PR B), UI (PR C), one review per PR plus fixes, README | ~1 h 10 m |
+| Final pass: #48 nginx fix with a compose smoke test, `.http` examples, my own verification checks, README corrections | ~15 m |
 
-That's over the 3-hour box. Most of the overrun went on process, which ended up heavier than the
-problem needed: a four-role subagent flow and an 871-line plan for one screen. I reset it partway through
-(D-046): batched PRs, one independent review per PR, and the cut list above. The build phase, where the
-graded work lives, took about 1 h 20 m. AI subagents ran several streams in parallel during that time.
+The setup phase took longer than the problem needed, with a four-role subagent flow and an 871-line plan
+for one screen. Partway through I reset it (D-046): batched PRs, one independent review per PR, and the
+cut list above. Several AI subagents ran in parallel during the build phase.
 
 ## Working on the repo
 
