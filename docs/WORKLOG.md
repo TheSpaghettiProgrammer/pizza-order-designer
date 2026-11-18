@@ -685,3 +685,17 @@ commit were discarded. The story stays open as a documented next step.
     "Order description" subsection: built server-side from menu names, one line per order line
     (`2 × Large pizza — Pepperoni, Bacon`, or "no toppings"), identical lines not merged, and no
     prices. Checked against `OrderPricer`/`OrderDescription`.
+
+- **Human contributions page:** at the user's request, added `docs/HUMAN-CONTRIBUTIONS.md`. It's written
+  for a reader in the third person ("Kyle did…"), with each claim pointing to its evidence (decision IDs,
+  PRs, issues, WORKLOG sessions):
+  - the decisions only he could make,
+  - the process he designed,
+  - his course corrections (D-046, consolidating sessions, stopping #31),
+  - the independent reviews he commissioned and what they caught (#48, the AI-note attribution, the
+    time line, the description assumption),
+  - his own verification, and the gatekeeping (all 13 PRs merged by him),
+  - plus a "for balance" section on what the AI did and which of his early choices added cost.
+
+  Linked from the README's AI usage note. The counts were checked (48 decisions, 11 sessions, 13 merged
+  PRs).
