@@ -1,3 +1,5 @@
+import type { OrderDraftBody } from '@/api/types';
+
 // The customer's order while they are still building it. Menu codes only, never prices: the server
 // does all pricing (D-039). The only number is `quantity`, a count.
 
@@ -30,4 +32,18 @@ export interface DraftOrder {
 
 export function createEmptyDraft(): DraftOrder {
   return { lines: [], promoCode: null, tip: null };
+}
+
+/** The request body the API expects: codes and the customer's raw input only, never prices. */
+export function toOrderBody(draft: DraftOrder): OrderDraftBody {
+  const tip = draft.tip && draft.tip.value.trim() !== '' ? { ...draft.tip } : null;
+  return {
+    lines: draft.lines.map((l) => ({
+      sizeCode: l.sizeCode,
+      toppingCodes: [...l.toppingCodes],
+      quantity: l.quantity,
+    })),
+    promoCode: draft.promoCode,
+    tip,
+  };
 }

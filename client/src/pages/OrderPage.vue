@@ -32,6 +32,7 @@
           </q-card-section>
           <OrderLines v-if="lines.length" :lines="lines" @edit="(id) => (editingId = id)" />
         </q-card>
+        <OrderSummary class="q-mt-md" />
       </div>
     </div>
   </q-page>
@@ -41,6 +42,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { describeError } from '@/api/api-error';
 import OrderLines from '@/components/OrderLines.vue';
+import OrderSummary from '@/components/OrderSummary.vue';
 import PizzaCustomizer from '@/components/PizzaCustomizer.vue';
 import { useDraftOrderStore } from '@/stores/draft-order-store';
 import { useMenuStore } from '@/stores/menu-store';
