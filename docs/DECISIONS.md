@@ -39,6 +39,9 @@ or **Open** (decided provisionally, revisit later).
 | D-031 | 2026-11-17 | One plan file per story in `docs/plans/`, the single artifact every role writes to | Accepted |
 | D-032 | 2026-11-17 | Branch per story (`story/<N>-<slug>`), PR with `Closes #N`, user merges | Superseded by D-033 |
 | D-033 | 2026-11-17 | No direct pushes to `main`: every change goes through a feature branch + PR the user merges, enforced by a pre-push hook | Accepted |
+| D-034 | 2026-11-17 | Playwright E2E for UI behaviour; Vitest stays for unit tests | Accepted |
+| D-035 | 2026-11-17 | First UI work: Playwright harness (#41), then #25, then #8 → #26 | Accepted |
+| D-036 | 2026-11-17 | A secondary session works in its own git worktree under `.claude/worktrees/` | Accepted |
 
 ---
 
@@ -326,3 +329,50 @@ no force push). That's worth it if the repo is made public for the submission.
   `delete_branch_on_merge=true`. Merge commits are the only option, and head branches are deleted
   automatically.
 - `core.hooksPath=.githooks` is set in the main working clone.
+
+### D-034 — Playwright for UI tests; Vitest stays for unit tests
+**Decision (the user's):** UI behaviour is tested with **Playwright** (`@playwright/test` **1.65.1**,
+pinned exactly, with Chromium) driving the real Quasar app in a browser. Vitest and Quasar's testing
+extension (D-023) stay for unit tests of stores and the API client. Story #41 sets this up.
+- Specs live in `client/test/e2e/`, and Vitest only picks up `client/test/vitest/__tests__/`, so the two
+  runners never see each other's files. `npm test` is still Vitest only. `npm run test:e2e` /
+  `test:e2e:ui` run Playwright.
+- `client/playwright.config.ts` starts its own `quasar dev` on a **dedicated port, 9100** (override
+  with `PLAYWRIGHT_PORT`) and reuses it if it's already running (outside CI). The port isn't the
+  normal dev port 9000 because Playwright would otherwise silently reuse a dev server you already
+  have open, possibly from another checkout or worktree, and test the wrong code. `/api` is still
+  proxied by the dev server (D-011).
+- #36 (frontend component tests, which were planned with Vitest) will use Playwright for UI behaviour.
+
+**Why E2E rather than Playwright component testing:** `@playwright/experimental-ct-vue` is still
+experimental, and it builds components with its own Vite config instead of the Quasar CLI's, so
+Quasar's auto-import, boot files and `quasar.config.ts` setup would have to be copied by hand. E2E
+against `quasar dev` tests exactly what the customer sees, with no second build setup.
+**Why keep Vitest:** store and API-client logic (debounce, ignoring stale quote responses, idempotency
+keys) is quicker and more precise to test without a browser.
+**Pinned exactly** (`-E`): the npm package and its downloaded browser builds are versioned together,
+so a caret range could drift away from the installed browsers.
+**Alternatives:** Playwright only (drop Vitest): one tool, but store logic would only be testable
+through the browser. Cypress: the user chose Playwright.
+
+### D-035 — Order of the first UI work
+**Decision (the user's):** To get a usable order screen quickly: first the Playwright harness (#41, a
+small chore PR), then **#25** (kiosk start screen and draft-order store, which needs no backend), then
+**#8** (data-driven menu and `GET /api/menu`) → **#26** (pizza customizer).
+**Why:** #25 is the only UI story with no backend or M0 dependency. #26 needs #8's menu API, and #27
+(running total) needs #14, which waits on the M0 pricing questions #2 and #3.
+**Alternatives:** #8 + #26 first (no UI to see until both are done), or #26 against a mocked menu
+(breaks #26's "nothing hard-coded" acceptance criterion until #8 lands).
+
+### D-036 — A secondary session works in its own git worktree
+**Decision:** A second Claude Code session that works alongside the main one uses its own git worktree
+(`git worktree add .claude/worktrees/<N>-<slug> -b <branch> origin/main`), not the shared checkout.
+`.claude/worktrees/` is excluded locally through `.git/info/exclude`, so nothing has to be committed.
+The branch's upstream is unset after `git worktree add`, so a bare `git push` can't target `main` (the
+pre-push hook, D-033, would reject that anyway).
+**Why:** Both sessions share one working directory. One session switching branches or pulling would
+change files under the other. A worktree gives each session its own branch and files and shares the
+same `.git`, so the hook and config still apply.
+**Trade-off:** Each worktree needs its own `npm ci`, and the two sessions can still pick the same
+`D-xxx` number or both append to `WORKLOG.md`. Those conflicts are resolved when merging `main` into the
+branch. The PR says which session wrote it.
