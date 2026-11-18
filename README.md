@@ -57,6 +57,20 @@ dotnet test server/PizzaOrderDesigner.slnx
 npm --prefix client test
 ```
 
+End-to-end UI tests (Playwright, in `client/test/e2e/`). Install the browser once, then run them. Playwright
+starts its own dev server on http://localhost:9100. Specs that call `/api` also need the API running.
+
+```bash
+npx --prefix client playwright install chromium
+```
+
+```bash
+npm --prefix client run test:e2e
+```
+
+`npm --prefix client run test:e2e:ui` opens Playwright's interactive UI mode. The HTML report goes to
+`client/playwright-report/` (`npx playwright show-report` from `client/`).
+
 ### Contributing workflow
 
 `main` only changes through pull requests: create a feature branch, open a PR, review it, merge it. Enable
