@@ -641,3 +641,9 @@ README's Tests section now lists the script.
   local dev :5158). It also has examples for submit (with a fixed Idempotency-Key, to show a safe
   retry), get, update with `If-Match`, kitchen advance and cancel. The update example's
   `expectedTotal` (17.21) was checked against the live quote endpoint.
+- **The user's own check (for the AI note):** the user ran the worked example in the browser against
+  the Docker stack and confirmed **$31.23**. They placed the order, saw the status page offer Cancel
+  while Not Started, and saw Cancel disappear when the timer moved the order to Preparing.
+- **The AI note was rewritten with exact attribution.** It now says what the user decided and verified,
+  what Claude implemented and checked (mutation checks, the 25/25 race finding), and what the review
+  subagents caught. The time section was finalized: ~20:18–22:35, about 2 h 15 m.
