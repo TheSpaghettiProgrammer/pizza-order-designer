@@ -88,6 +88,9 @@ export async function apiRequest<T>(
       try {
         payload = await response.json();
       } catch {
+        // A success whose body we couldn't read (e.g. the connection dropped mid-body) is NOT a
+        // success to the caller: the outcome is unknown, so treat it like a lost connection.
+        if (response.ok) throw new ApiError({ kind: timedOut ? 'timeout' : 'network' });
         payload = undefined;
       }
     }

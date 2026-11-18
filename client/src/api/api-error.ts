@@ -67,7 +67,11 @@ export function friendlyMessage(error: unknown): FriendlyMessage {
       return withReference({ message: GENERIC }, error);
     case 'problem': {
       const serverError = (error.status ?? 500) >= 500;
-      const text = error.detail ?? error.title;
+      // The server's title is the customer-facing headline; detail adds the "what now". Show both.
+      const text =
+        error.title && error.detail && error.detail !== error.title
+          ? `${error.title}${/[.!?]$/.test(error.title) ? '' : '.'} ${error.detail}`
+          : (error.title ?? error.detail);
       if (serverError || !text) return withReference({ message: GENERIC }, error);
       return { message: text };
     }

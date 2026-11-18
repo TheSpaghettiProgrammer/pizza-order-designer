@@ -9,8 +9,18 @@
       </template>
     </q-banner>
 
+    <q-banner
+      v-if="checkout.locked"
+      class="bg-grey-3 text-black q-mb-md"
+      rounded
+      role="status"
+      data-testid="order-locked"
+    >
+      Your order is locked while we confirm it with the kitchen.
+    </q-banner>
+
     <div class="row q-col-gutter-md">
-      <div class="col-12 col-md-7">
+      <div class="col-12 col-md-7" :inert="checkout.locked || undefined">
         <PizzaCustomizer
           v-if="menuStore.menu"
           :menu="menuStore.menu"
@@ -30,9 +40,14 @@
               {{ store.itemCount }} {{ store.itemCount === 1 ? 'pizza' : 'pizzas' }} in your order
             </p>
           </q-card-section>
-          <OrderLines v-if="lines.length" :lines="lines" @edit="(id) => (editingId = id)" />
+          <OrderLines
+            v-if="lines.length"
+            :lines="lines"
+            :inert="checkout.locked || undefined"
+            @edit="(id) => (editingId = id)"
+          />
         </q-card>
-        <TipPromoPanel v-if="lines.length" class="q-mt-md" />
+        <TipPromoPanel v-if="lines.length" class="q-mt-md" :inert="checkout.locked || undefined" />
         <OrderSummary class="q-mt-md" />
         <SubmitPanel v-if="lines.length" class="q-mt-md" />
       </div>
@@ -48,11 +63,14 @@ import OrderSummary from '@/components/OrderSummary.vue';
 import SubmitPanel from '@/components/SubmitPanel.vue';
 import TipPromoPanel from '@/components/TipPromoPanel.vue';
 import PizzaCustomizer from '@/components/PizzaCustomizer.vue';
+import { useCheckoutStore } from '@/stores/checkout-store';
 import { useDraftOrderStore } from '@/stores/draft-order-store';
 import { useMenuStore } from '@/stores/menu-store';
 
 const store = useDraftOrderStore();
 const menuStore = useMenuStore();
+// While a submit is in flight or its outcome is unknown, the order can't change (no second order).
+const checkout = useCheckoutStore();
 
 const editingId = ref<string | null>(null);
 const lines = computed(() => store.draft?.lines ?? []);

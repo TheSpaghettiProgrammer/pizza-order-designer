@@ -67,6 +67,53 @@ test('after the automatic retries run out, Retry resends with the same key', asy
   expect(new Set(api.submits.map((s) => s.key)).size).toBe(1);
 });
 
+test('when the server saved the order but the answer was lost, the order locks until Retry', async ({
+  page,
+}) => {
+  const api = await mockApi(page);
+  api.loseResponses = 3; // stored on the first attempt; that answer and both retries' answers are lost
+  await buildOrder(page);
+
+  await page.getByTestId('place-order').click();
+  await expect(page.getByTestId('submit-failed')).toContainText("We couldn't confirm your order");
+
+  // Locked: no edits, no Cancel order, no second Place order. Only Retry.
+  await expect(page.getByTestId('order-locked')).toBeVisible();
+  await expect(page.getByTestId('size-large').locator('xpath=ancestor::*[@inert]')).toHaveCount(1);
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: 'Cancel order', exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByTestId('place-order')).toBeDisabled();
+
+  // A refresh keeps the lock and the same pending request.
+  await page.reload();
+  await expect(page.getByTestId('order-locked')).toBeVisible();
+
+  await page.getByTestId('retry').click();
+  await expect(page).toHaveURL('/orders/order-1');
+
+  // Every request used the same key and body, so the server holds exactly one order.
+  expect(new Set(api.submits.map((s) => s.key)).size).toBe(1);
+  expect(new Set(api.submits.map((s) => JSON.stringify(s.body))).size).toBe(1);
+  expect(api.order?.id).toBe('order-1');
+});
+
+test('a definite rejection unlocks the order and the next attempt uses a new key', async ({
+  page,
+}) => {
+  const api = await mockApi(page);
+  api.priceOffset = 0.5;
+  await buildOrder(page);
+
+  await page.getByTestId('place-order').click();
+  await expect(page.getByTestId('price-changed')).toBeVisible();
+  await expect(page.getByTestId('order-locked')).toBeHidden();
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: 'Cancel order', exact: true }),
+  ).toBeEnabled();
+  expect(api.submits).toHaveLength(1);
+});
+
 test('a changed price asks for confirmation and resubmits with a NEW key', async ({ page }) => {
   const api = await mockApi(page);
   api.priceOffset = 0.5;

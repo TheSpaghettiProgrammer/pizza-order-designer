@@ -52,6 +52,7 @@ or **Open** (decided provisionally, revisit later).
 | D-044 | 2026-11-17 | Kiosk flow: `/` start, `/order` builder, route guard, one shared exit path (#25) | Accepted |
 | D-045 | 2026-11-17 | Draft order in a Pinia store, persisted to sessionStorage (versioned, fail-safe) (#25) | Accepted |
 | D-046 | 2026-11-17 | Timebox reset: 4 batched PRs, slim process, scope cut list. Supersedes D-030, D-037 | Accepted |
+| D-048 | 2026-11-17 | UI: the order locks while a submit is in flight or its outcome is unknown; only Retry (same key and body) | Accepted |
 
 ---
 
@@ -515,3 +516,13 @@ checks; one user approval per PR; sonnet for developer and UI work.
 endpoint plus curl is enough), #23 structured logging, #24 OpenAPI UI (unless free), #36 frontend
 component tests, #38 CI.
 **Budget order if time runs short:** cut C before B. The brief weights pricing and lifecycle over UI.
+
+### D-048 — Lock the order while a submit's outcome is unknown (PR C)
+After a network error, a timeout, a 5xx, or an unreadable success body, the server **may already have the
+order**. The UI then locks the order: no edits, no Cancel order, no new Place order. Only **Retry** remains,
+and it resends the *exact* body with the *same* Idempotency-Key, so the server answers with the original
+order. The pending key and body survive a refresh (sessionStorage). A definite rejection (400, or 409
+price.changed) unlocks the order, because nothing was stored.
+*Why:* otherwise "edit the tip, tap Place order" mints a new key and places a second order (found in
+review). *Alternative:* allow edits and send a PUT to the possibly-created order. That needs the order id,
+which we don't have when the answer was lost.

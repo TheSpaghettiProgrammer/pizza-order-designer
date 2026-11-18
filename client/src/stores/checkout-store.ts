@@ -12,46 +12,86 @@ export const MAX_ATTEMPTS = 3;
 export const BACKOFF_MS = 500;
 const SLOW_AFTER_MS = 3000;
 
+/** sessionStorage key for a submit whose outcome we don't know yet (survives a refresh). */
+export const PENDING_SUBMIT_KEY = 'pizza-order-designer:pending-submit';
+
 export type CheckoutPhase = 'idle' | 'sending' | 'failed' | 'priceChanged';
+
+interface PendingSubmit {
+  key: string;
+  body: SubmitOrderBody;
+}
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+function loadPending(): PendingSubmit | null {
+  try {
+    const raw = globalThis.sessionStorage.getItem(PENDING_SUBMIT_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const candidate = parsed as Partial<PendingSubmit>;
+    return typeof candidate.key === 'string' && typeof candidate.body === 'object' && candidate.body
+      ? { key: candidate.key, body: candidate.body }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePending(pending: PendingSubmit | null): void {
+  try {
+    if (pending) globalThis.sessionStorage.setItem(PENDING_SUBMIT_KEY, JSON.stringify(pending));
+    else globalThis.sessionStorage.removeItem(PENDING_SUBMIT_KEY);
+  } catch {
+    // Storage unavailable: the key still lives in memory for this page.
+  }
+}
+
+/** The server may have saved the order even though we got no answer (or no readable answer). */
+function outcomeIsUnclear(error: unknown): boolean {
+  return error instanceof ApiError && (error.isTransient || (error.status ?? 0) >= 500);
+}
+
 /**
  * Retry-safe checkout (#30). The Idempotency-Key belongs to one request BODY: automatic retries and
- * the manual Retry button resend the same body, so they reuse the key and the server answers with
- * the original order instead of creating a second one. A different body (the customer edited the
- * order, or confirmed a new total after price.changed) gets a NEW key, because the same key with a
- * different body is rejected (422).
+ * the manual Retry button resend exactly that body with the same key, so the server answers with the
+ * original order instead of creating a second one.
+ *
+ * While a submit is in flight, or failed in a way where the server may already have the order
+ * (network error, timeout, 5xx), the order is LOCKED: no edits, no Cancel order, only Retry. That is
+ * what stops "edit the tip, tap Place order" from minting a new key and placing a second order. The
+ * pending key and body are kept in sessionStorage, so a refresh doesn't lose them either.
+ * A definite rejection (400, or 409 price.changed) unlocks the order: nothing was stored.
  */
 export const useCheckoutStore = defineStore('checkout', () => {
   const draftStore = useDraftOrderStore();
   const quoteStore = useQuoteStore();
 
-  const phase = ref<CheckoutPhase>('idle');
+  const restored = draftStore.draft ? loadPending() : null;
+  if (!restored) savePending(null);
+
+  const phase = ref<CheckoutPhase>(restored ? 'failed' : 'idle');
+  const outcomeUnclear = ref(restored !== null);
   const attempt = ref(0);
   const slow = ref(false);
   const error = ref<unknown>(null);
   const changedTotal = ref<number | null>(null);
-
-  let key: string | null = null;
-  let keyedBody: string | null = null;
+  let pending: PendingSubmit | null = restored;
 
   const stillSending = computed(
     () => phase.value === 'sending' && (attempt.value > 1 || slow.value),
   );
 
-  function keyFor(body: SubmitOrderBody): string {
-    const signature = JSON.stringify(body);
-    if (key === null || signature !== keyedBody) {
-      key = newId();
-      keyedBody = signature;
-    }
-    return key;
-  }
+  /** True while the order must not change: a submit is in flight or its outcome is unknown. */
+  const locked = computed(
+    () => phase.value === 'sending' || (phase.value === 'failed' && outcomeUnclear.value),
+  );
 
-  function forgetKey(): void {
-    key = null;
-    keyedBody = null;
+  function clearPending(): void {
+    pending = null;
+    outcomeUnclear.value = false;
+    savePending(null);
   }
 
   function reset(): void {
@@ -60,18 +100,22 @@ export const useCheckoutStore = defineStore('checkout', () => {
     slow.value = false;
     error.value = null;
     changedTotal.value = null;
-    forgetKey();
+    clearPending();
   }
 
   /** Returns the placed order, or null when it failed (phase and error say why). */
   async function submit(): Promise<Order | null> {
     if (phase.value === 'sending') return null;
-    const draft = draftStore.draft;
-    const quote = quoteStore.breakdown;
-    if (!draft || draft.lines.length === 0 || !quote || quoteStore.updating) return null;
 
-    const body: SubmitOrderBody = { ...toOrderBody(draft), expectedTotal: quote.total };
-    const idempotencyKey = keyFor(body);
+    // A submit with an unknown outcome is resolved by resending EXACTLY the same request.
+    if (!pending) {
+      const draft = draftStore.draft;
+      const quote = quoteStore.breakdown;
+      if (!draft || draft.lines.length === 0 || !quote || quoteStore.updating) return null;
+      pending = { key: newId(), body: { ...toOrderBody(draft), expectedTotal: quote.total } };
+    }
+    const { key, body } = pending;
+    savePending(pending);
 
     phase.value = 'sending';
     error.value = null;
@@ -83,9 +127,9 @@ export const useCheckoutStore = defineStore('checkout', () => {
       for (let n = 1; n <= MAX_ATTEMPTS; n++) {
         attempt.value = n;
         try {
-          const response = await submitOrder(body, idempotencyKey);
+          const response = await submitOrder(body, key);
           phase.value = 'idle';
-          forgetKey();
+          clearPending();
           return response.data;
         } catch (e) {
           const retry = e instanceof ApiError && e.isTransient && n < MAX_ATTEMPTS;
@@ -96,14 +140,17 @@ export const useCheckoutStore = defineStore('checkout', () => {
       return null;
     } catch (e) {
       error.value = e;
-      if (e instanceof ApiError && e.code === 'price.changed' && e.quote) {
+      if (outcomeIsUnclear(e)) {
+        // Keep the key and body: Retry must resend the same request (the server may have the order).
+        outcomeUnclear.value = true;
+        phase.value = 'failed';
+      } else if (e instanceof ApiError && e.code === 'price.changed' && e.quote) {
+        clearPending(); // nothing was stored; confirming the new total is a new request with a new key
         quoteStore.adopt(e.quote);
         changedTotal.value = e.quote.total;
         phase.value = 'priceChanged';
       } else {
-        // 4xx other than a price change are not retried with this key (it may be bound to a body
-        // the server rejected); 5xx and network failures may be, hence the manual Retry button.
-        if (e instanceof ApiError && !e.isTransient && (e.status ?? 0) < 500) forgetKey();
+        clearPending(); // a definite rejection: nothing was stored
         phase.value = 'failed';
       }
       return null;
@@ -113,11 +160,12 @@ export const useCheckoutStore = defineStore('checkout', () => {
     }
   }
 
-  // Editing the order while a failure or price-change banner is up makes the banner stale.
+  // Editing the order after a definite rejection makes the banner stale. (While locked, edits are
+  // blocked in the UI, so an unclear outcome is never cleared this way.)
   watch(
     () => draftStore.draft && JSON.stringify(toOrderBody(draftStore.draft)),
     () => {
-      if (phase.value === 'failed' || phase.value === 'priceChanged') {
+      if (phase.value === 'priceChanged' || (phase.value === 'failed' && !outcomeUnclear.value)) {
         phase.value = 'idle';
         changedTotal.value = null;
         error.value = null;
@@ -132,5 +180,16 @@ export const useCheckoutStore = defineStore('checkout', () => {
     error.value = null;
   }
 
-  return { phase, attempt, stillSending, error, changedTotal, submit, dismissPriceChange, reset };
+  return {
+    phase,
+    attempt,
+    stillSending,
+    locked,
+    outcomeUnclear,
+    error,
+    changedTotal,
+    submit,
+    dismissPriceChange,
+    reset,
+  };
 });

@@ -106,8 +106,10 @@ export function priceDraft(body: DraftBody): Record<string, unknown> {
 export interface MockApiState {
   quoteCalls: DraftBody[];
   submits: { key: string | undefined; body: DraftBody }[];
-  /** Abort this many submit requests (connection reset) before answering. */
+  /** Abort this many submit requests (connection reset) BEFORE the server stores anything. */
   dropSubmits: number;
+  /** For this many submits, the server STORES the order and then the response is lost. */
+  loseResponses: number;
   /** The server's total differs from the draft's by this many dollars (409 price.changed). */
   priceOffset: number;
   order: StoredOrder | null;
@@ -125,10 +127,18 @@ function json(route: Route, status: number, body: unknown, headers: Record<strin
   });
 }
 
-function problem(route: Route, status: number, code: string, detail: string, extra = {}) {
+// Same shape as the real API (docs/API.md): a headline title, a "what now" detail, stable code, traceId.
+function problem(
+  route: Route,
+  status: number,
+  code: string,
+  title: string,
+  detail?: string,
+  extra = {},
+) {
   return json(route, status, {
-    title: detail,
-    detail,
+    title,
+    ...(detail ? { detail } : {}),
     status,
     code,
     traceId: 'trace-' + code,
@@ -141,11 +151,14 @@ export async function mockApi(page: Page): Promise<MockApiState> {
     quoteCalls: [],
     submits: [],
     dropSubmits: 0,
+    loseResponses: 0,
     priceOffset: 0,
     order: null,
     menuFails: false,
   };
-  const byKey = new Map<string, StoredOrder>();
+  const byKey = new Map<string, { order: StoredOrder; body: string }>();
+  const deleted = new Set<string>();
+  let created = 0;
 
   const orderJson = (o: StoredOrder) => ({
     id: o.id,
@@ -165,7 +178,15 @@ export async function mockApi(page: Page): Promise<MockApiState> {
       const method = request.method();
 
       if (path === '/api/menu') {
-        if (state.menuFails) return problem(route, 500, 'internal', 'boom');
+        if (state.menuFails) {
+          return problem(
+            route,
+            500,
+            'server.error',
+            'Something went wrong on our side.',
+            'Please try again.',
+          );
+        }
         return json(route, 200, MENU);
       }
 
@@ -174,19 +195,19 @@ export async function mockApi(page: Page): Promise<MockApiState> {
         state.quoteCalls.push(body);
         if (body.promoCode && body.promoCode.toUpperCase() !== 'ILOVEPIZZA') {
           return json(route, 400, {
-            title: 'Check your order',
-            detail: 'Some details need attention.',
+            title: 'Please check your order.',
+            detail: 'Some items in your order need attention.',
             status: 400,
-            code: 'validation',
+            code: 'order.invalid',
             errors: { promoCode: ['That promo code is not valid.'] },
           });
         }
         if (body.tip && Number(body.tip.value) < 0) {
           return json(route, 400, {
-            title: 'Check your order',
-            detail: 'Some details need attention.',
+            title: 'Please check your order.',
+            detail: 'Some items in your order need attention.',
             status: 400,
-            code: 'validation',
+            code: 'order.invalid',
             errors: { 'tip.value': ['The tip cannot be negative.'] },
           });
         }
@@ -201,34 +222,76 @@ export async function mockApi(page: Page): Promise<MockApiState> {
           state.dropSubmits -= 1;
           return route.abort('connectionreset');
         }
-        const existing = key ? byKey.get(key) : undefined;
-        if (existing) return json(route, 200, orderJson(existing));
+        if (!key) {
+          return problem(route, 400, 'idempotency.key_missing', "We couldn't send your order.");
+        }
+        const bodyJson = JSON.stringify(body);
+        const existing = byKey.get(key);
+        if (existing) {
+          if (existing.body !== bodyJson) {
+            return problem(
+              route,
+              422,
+              'idempotency.key_reused',
+              "This request doesn't match the order it was first sent with.",
+            );
+          }
+          if (deleted.has(existing.order.id)) {
+            return problem(route, 409, 'order.cancelled', 'This order was cancelled.');
+          }
+          if (state.loseResponses > 0) {
+            state.loseResponses -= 1;
+            return route.abort('connectionreset'); // the replay's answer is lost too
+          }
+          return json(route, 200, orderJson(existing.order), {
+            ETag: `"${existing.order.version}"`,
+          });
+        }
         const pricing = priceDraft(body);
         const serverTotal = Number(pricing.total) + state.priceOffset;
         if (
           body.expectedTotal !== undefined &&
           Math.abs(body.expectedTotal - serverTotal) > 0.001
         ) {
-          return problem(route, 409, 'price.changed', 'The price has changed.', {
-            quote: { ...pricing, total: Number(serverTotal.toFixed(2)) },
-          });
+          return problem(
+            route,
+            409,
+            'price.changed',
+            'The price of your order has changed.',
+            'Please review and confirm.',
+            { quote: { ...pricing, total: Number(serverTotal.toFixed(2)) } },
+          );
         }
+        created += 1;
         const order: StoredOrder = {
-          id: 'order-' + (byKey.size + 1),
+          id: 'order-' + created,
           status: 'NotStarted',
           version: 1,
           pricing,
         };
-        if (key) byKey.set(key, order);
+        byKey.set(key, { order, body: bodyJson });
         state.order = order;
-        return json(route, 201, orderJson(order), { Location: `/api/orders/${order.id}` });
+        if (state.loseResponses > 0) {
+          state.loseResponses -= 1;
+          return route.abort('connectionreset'); // stored, but the customer never hears back
+        }
+        return json(route, 201, orderJson(order), {
+          Location: `/api/orders/${order.id}`,
+          ETag: `"${order.version}"`,
+        });
       }
 
       const match = /^\/api\/orders\/([^/]+)$/.exec(path);
       if (match) {
         const order = state.order;
         if (!order || order.id !== match[1]) {
-          return problem(route, 404, 'order.not_found', 'We could not find that order.');
+          return problem(
+            route,
+            404,
+            'order.not_found',
+            "We couldn't find that order.",
+            'It may have been cancelled.',
+          );
         }
         if (method === 'GET') {
           return json(route, 200, orderJson(order), { ETag: `"${order.version}"` });
@@ -239,15 +302,17 @@ export async function mockApi(page: Page): Promise<MockApiState> {
               route,
               409,
               'order.already_started',
-              'The kitchen has already started this order.',
+              'The kitchen has already started your order.',
+              'It can no longer be changed or cancelled.',
             );
           }
+          deleted.add(order.id);
           state.order = null;
           return route.fulfill({ status: 204 });
         }
       }
 
-      return problem(route, 404, 'not_mocked', `Not mocked: ${method} ${path}`);
+      return problem(route, 404, 'not_mocked', `Not mocked: ${method} ${path}`, undefined);
     },
   );
 

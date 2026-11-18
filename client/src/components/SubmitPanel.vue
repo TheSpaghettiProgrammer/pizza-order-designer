@@ -29,7 +29,12 @@
         rounded
         data-testid="submit-failed"
       >
-        {{ describeError(checkout.error) }}
+        <template v-if="checkout.outcomeUnclear">
+          We couldn't confirm your order went through. Tap Retry to check. You won't be charged
+          twice.
+          <span v-if="checkout.error">({{ describeError(checkout.error) }})</span>
+        </template>
+        <template v-else>{{ describeError(checkout.error) }}</template>
         <template #action>
           <q-btn flat no-caps label="Retry" data-testid="retry" @click="place" />
         </template>
@@ -37,7 +42,7 @@
 
       <p v-if="checkout.stillSending" class="q-mb-md" role="status" data-testid="still-sending">
         <q-spinner size="1em" class="q-mr-xs" />
-        Still sending… Connection lost, retrying.
+        Still sending… This is taking longer than usual.
       </p>
 
       <q-btn
@@ -71,9 +76,14 @@ const draftStore = useDraftOrderStore();
 const quote = useQuoteStore();
 const router = useRouter();
 
-// An order needs at least one line and a fresh server price.
+// An order needs at least one line and a fresh server price. While the outcome of a previous submit
+// is unknown, only Retry is offered (Place order would be the same request anyway).
 const canPlace = computed(
-  () => (draftStore.draft?.lines.length ?? 0) > 0 && quote.breakdown !== null && !quote.updating,
+  () =>
+    !checkout.outcomeUnclear &&
+    (draftStore.draft?.lines.length ?? 0) > 0 &&
+    quote.breakdown !== null &&
+    !quote.updating,
 );
 
 async function place(): Promise<void> {

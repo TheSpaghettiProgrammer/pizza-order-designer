@@ -67,6 +67,6 @@ test('a failing menu load shows a friendly message with a reference, not raw JSO
   await startOrder(page);
 
   await expect(page.getByText('Something went wrong. Please try again.')).toBeVisible();
-  await expect(page.getByText('Reference: trace-internal')).toBeVisible();
+  await expect(page.getByText('Reference: trace-server.error')).toBeVisible();
   await expect(page.getByText('boom')).toHaveCount(0);
 });

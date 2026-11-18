@@ -51,7 +51,10 @@ describe('apiRequest error mapping', () => {
     expect(error.code).toBe('price.changed');
     expect(error.errors).toEqual({ promoCode: ['Not valid.'] });
     expect(error.quote?.total).toBe(10);
-    expect(friendlyMessage(error)).toEqual({ message: 'The total is now $10.00.' });
+    // Title (headline) and detail (what now) both shown; a period is added after a bare title.
+    expect(friendlyMessage(error)).toEqual({
+      message: 'The price changed. The total is now $10.00.',
+    });
   });
 
   it('maps a dropped connection to a network error with friendly text', async () => {
