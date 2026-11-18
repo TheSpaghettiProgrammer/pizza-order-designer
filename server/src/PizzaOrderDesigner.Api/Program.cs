@@ -18,7 +18,17 @@ builder.Services.AddSingleton<IPromotionRule, PercentOffOrderRule>();
 builder.Services.AddSingleton<IPromotionRule, AmountOffOverThresholdRule>();
 builder.Services.AddSingleton<PromotionEngine>();
 builder.Services.AddSingleton<OrderPricer>();
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = context =>
+{
+    // Unhandled exceptions (#22): a friendly message and the traceId for support. The exception handler middleware
+    // logs the full exception, with the same traceId, on the server. Stack traces never reach the client.
+    if (context.ProblemDetails.Status == StatusCodes.Status500InternalServerError)
+    {
+        context.ProblemDetails.Title = "Something went wrong on our side.";
+        context.ProblemDetails.Detail = "Please try again. If it keeps happening, show staff this reference code.";
+        context.ProblemDetails.Extensions["code"] = "server.error";
+    }
+});
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()))
     .ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = context =>
@@ -36,6 +46,8 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<PizzaDbContext>("database");
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 // Apply pending EF Core migrations at startup when enabled (Development and docker-compose).
 // See docs/DECISIONS.md: a dedicated migration step would be preferred for production.
