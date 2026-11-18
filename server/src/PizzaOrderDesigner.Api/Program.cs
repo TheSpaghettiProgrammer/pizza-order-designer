@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using PizzaOrderDesigner.Api.Menu;
+using PizzaOrderDesigner.Api.Orders;
 using PizzaOrderDesigner.Api.Pricing;
 using PizzaOrderDesigner.Api.Pricing.Promotions;
 using PizzaOrderDesigner.Data;
@@ -18,9 +19,27 @@ builder.Services.AddSingleton<IPromotionRule, PercentOffOrderRule>();
 builder.Services.AddSingleton<IPromotionRule, AmountOffOverThresholdRule>();
 builder.Services.AddSingleton<PromotionEngine>();
 builder.Services.AddSingleton<OrderPricer>();
-builder.Services.AddProblemDetails();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<OrderService>();
+builder.Services.Configure<KitchenAutoAdvanceOptions>(builder.Configuration.GetSection(KitchenAutoAdvanceOptions.SectionName));
+builder.Services.AddHostedService<KitchenAutoAdvanceService>();
+builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = context =>
+{
+    // Unhandled exceptions (#22): a friendly message and the traceId for support. The exception handler middleware
+    // logs the full exception, with the same traceId, on the server. Stack traces never reach the client.
+    if (context.ProblemDetails.Status == StatusCodes.Status500InternalServerError)
+    {
+        context.ProblemDetails.Title = "Something went wrong on our side.";
+        context.ProblemDetails.Detail = "Please try again. If it keeps happening, show staff this reference code.";
+        context.ProblemDetails.Extensions["code"] = "server.error";
+    }
+});
 builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()))
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        o.AllowInputFormatterExceptionMessages = false; // don't echo .NET type names back to clients
+    })
     .ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = context =>
     {
         // Malformed JSON or wrong types: same friendly ProblemDetails shape as our own validation errors.
@@ -36,6 +55,9 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<PizzaDbContext>("database");
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages(); // bodiless errors (e.g. a non-GUID id → 404) also get a ProblemDetails body
 
 // Apply pending EF Core migrations at startup when enabled (Development and docker-compose).
 // See docs/DECISIONS.md: a dedicated migration step would be preferred for production.
