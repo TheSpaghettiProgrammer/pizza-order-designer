@@ -271,6 +271,48 @@ Playwright for UI tests.
 - Then #25: story branch, plan file, `pizza-planner` → `pizza-plan-reviewer` → Gate 1.
 - Follow-up: the `lint:check` / line-endings fix above.
 
+### #25 planning (after PR #42 was opened)
+5. **PR #42** opened (`chore/41-playwright-e2e` → `main`, closes #41). There are no CI checks yet (#38).
+6. **#25 set up:** branch `story/25-kiosk-start-screen`, **stacked on `chore/41-playwright-e2e`**, so its
+   Playwright specs have the harness. It's in the same worktree, because the sandbox wouldn't create a
+   second worktree from inside the first. Board → In Progress. Plan file from the template.
+7. **pizza-planner** wrote section 1:
+   - `/` start page and `/order` builder (`meta.building`), plus a pure, unit-tested `kioskRedirect` guard.
+   - A Pinia setup store holding menu codes only: `{ lines[{id,sizeCode,toppingCodes,quantity}],
+     promoCode, tip{mode,value:string} }`, with no prices.
+   - Hand-rolled, versioned `sessionStorage` persistence that fails safe.
+   - Cancel order in the header, confirmed through the Quasar Dialog plugin.
+   - 12 Vitest + 10 Playwright tests. AC 4 (idle timeout) proposed as deferred.
+8. **pizza-plan-reviewer, round 1: REVISE** (2 Majors, 9 Minors, in section 2):
+   - **M1:** the plan was written against an out-of-date M0 status. My brief said #1–#7 were
+     unanswered, but the main session had decided and closed them in the meantime. The AC 4 deferral
+     has to be weighed again now that the full kiosk is in scope, because without a timeout a
+     walked-away draft stays on screen for the next customer.
+   - **M2:** promo cardinality. **Resolved by the orchestrator:** the #7 decision says "one code per
+     order", so `promoCode: string | null` stands; the planner should cite it.
+   - **Verified by the reviewer** (so the plan's first risk can be dropped): Quasar installs Pinia
+     before it creates the router, and the first navigation happens later, so the guard can read the
+     store.
+9. **Found: a decision-number clash with the main session.**
+   - PR #42 adds D-034 to D-036.
+   - PR #43 (`docs/m0-decisions`) records the M0 answers as D-034 to D-040, but its closing comments
+     on #1–#7, and #25's body, cite **D-037 to D-043**.
+   - Both PRs also add a WORKLOG "Session 3".
+   - The user is coordinating the fix with the main session.
+10. **Handed off:** the user is having the main session take over this work. This session stopped
+    here.
+
+### Open items (for the main session)
+- Fix the D-number and Session-heading clash between PRs #42 and #43. Whichever merges second renames
+  its Session heading.
+- The user decides: AC 4 idle timeout (include in #25, or a follow-up issue), and the planner's defaults
+  (Cancel always confirms; `/` → `/order` while a draft is open).
+- Then planner round 2 on #25 (address M1, M2 and the Minors in section 2, using the accepted M0
+  decisions), a plan review, and Gate 1.
+- After #42 merges: merge `main` into `story/25-kiosk-start-screen`.
+- Remove the worktree `.claude/worktrees/41-playwright-e2e` (it has its own `node_modules`) once it's no
+  longer needed. `.claude/worktrees/` is excluded in `.git/info/exclude`.
+- Follow-up: the `lint:check` / CRLF fix.
 ---
 
 ## 2026-11-17 — Session 4: M0 decisions (main session)
@@ -356,9 +398,46 @@ settles #8's ownership: the order from D-035 (#41 → #25 → #8 → #26) now ru
   then D-037–D-043; their sections before the "M0 decisions" block; WORKLOG Session 3 then Session 4.
   **Merge order: #42 first, then #43.** #43 then shows only its own changes.
 
+### #25 planning, continued here
+- **#42 and #43 merged** by the user (`e583d06`, `68b27c7`). One hiccup: my first sync ran before #43 was
+  merged, and I deleted the *local* `docs/m0-decisions` branch while its PR was still open. Nothing was
+  lost (the remote branch and PR were intact), and the user then merged it.
+- **Old worktree:** `git worktree remove` unregistered it and deleted its contents. An **empty folder**
+  is still locked by another process (probably the absorbed session's shell). It's harmless and excluded
+  from git, so it gets deleted once that session is closed.
+- **Merged `main` into `story/25-kiosk-start-screen`** (`1393b65`). The WORKLOG conflict was resolved by
+  keeping both: the Session 3 #25-planning notes, then Session 4.
+- **Plan header updated** with the user's answers (#44 split; both defaults kept; D-043 one promo code;
+  new decisions numbered D-044+).
+- **Subagents:** the `pizza-*` agent types aren't registered in this session, because they were added
+  after it started. So each role ran as a `general-purpose` agent on **opus**, briefed with the
+  6-part template and told to follow `.claude/agents/<role>.md` as its contract.
+  - **Planner round 2:** a complete, self-contained Round 2 with a "Response to review round 1" table.
+    New: the `useEndOrder().endOrder()` single exit path, shared with #44; warn-once persistence; scoped,
+    exact Playwright locators; E1's Cancel checks moved to step 3 so every step stays green; tests trimmed
+    to 12 unit + 8 E2E (+1 optional).
+  - Checked that it only changed section 1, then committed (`0149b08`).
+  - **Plan review round 2: APPROVE.** All 11 round-1 findings were resolved, with no new Blocker or Major.
+    The reviewer re-ran ESLint (exit 0) and checked the plan's claims against the installed Quasar,
+    vue-router and Vitest. Four new Minors for the developer to fold in: `unbound-method` /
+    `no-unsafe-*` traps in the tests, a ≥ 96 px assertion for Start order, filtering E8's console
+    warning, and a complete `Storage` stub.
+- **Proposed decisions at Gate 1:** D-044 (kiosk flow, route guard and shared exit path) and D-045
+  (draft-order store and persistence), plus three README assumption lines.
+
+### #25 delivered (Gate 1 → PR)
+- **Gate 1:** approved by the user at 21:13 as part of the process review (D-046), and recorded D-044
+  and D-045.
+- **`pizza-developer` (sonnet, as general-purpose):** 4 step commits in about 6 minutes. Optional E8
+  dropped.
+- **`pizza-reviewer` (opus): PASS**, with the cause of E8 explained.
+- **Orchestrator:** added the Enter-key check (and mutation-checked it), then re-ran every check: all
+  green. Details in the plan's §5.
+- **Cost of the full four-role flow for one P1 screen:** 4 opus runs plus 1 sonnet run, and an
+  871-line plan. That's why D-046 slims the process for the remaining PRs.
+
 ### Open items
-- Merge #42, then #43. Then merge `main` into `story/25-kiosk-start-screen`, remove the old worktree
-  `.claude/worktrees/41-playwright-e2e`, and run #25 planner round 2 → re-review → Gate 1.
+- After #25 merges: PR A (pricing core) is ready on `story/8-14-pricing-core` and in review.
 - `fix/` branch: make `lint:check` really check formatting (CRLF / `endOfLine`).
 - Publish the menu and quote API contract when #8 and #14 are planned.
 - #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.

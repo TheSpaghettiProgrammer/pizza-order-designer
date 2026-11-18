@@ -49,6 +49,8 @@ or **Open** (decided provisionally, revisit later).
 | D-041 | 2026-11-17 | A simulated payment step is in scope (no real payments) (#5) | Accepted |
 | D-042 | 2026-11-17 | Kitchen: an advance endpoint plus an optional auto-advance timer (#6) | Accepted |
 | D-043 | 2026-11-17 | Validation limits; an ineligible SAVE5 is rejected with a message (#7) | Accepted |
+| D-044 | 2026-11-17 | Kiosk flow: `/` start, `/order` builder, route guard, one shared exit path (#25) | Accepted |
+| D-045 | 2026-11-17 | Draft order in a Pinia store, persisted to sessionStorage (versioned, fail-safe) (#25) | Accepted |
 
 ---
 
@@ -482,3 +484,15 @@ interval. Both go through the same transition rules (#20). A kitchen view (#33) 
 | Promo codes | Trimmed and case-insensitive. Unknown → a clear error |
 | **SAVE5 on ≤ $20.00** | **Rejected** with a message ("SAVE5 needs an order over $20.00 before tax"); the code isn't applied |
 | SAVE5 + ILOVEPIZZA | Rejected (one code per order; conflict rule in the promo engine) |
+
+### D-044 — Kiosk flow and route guard (#25)
+`/` is the start screen and `/order` is the builder (`meta.building`). A guard sends building routes
+without a draft to `/`, and `/` with a draft to `/order`, so a **confirmed** Cancel order is the only
+exit. `useEndOrder().endOrder()` is the single "clear the draft → start screen" path, and the #44 idle
+timeout (cut, D-046) would reuse it. *Alternatives:* a "Continue / Start new" choice; a separate layout.
+
+### D-045 — Draft-order store and persistence (#25)
+A Pinia setup store holds `{ lines[{ id, sizeCode, toppingCodes, quantity }], promoCode, tip{ mode,
+value: string } }`: menu codes only, no prices (D-039). It's persisted to **sessionStorage** in a
+versioned envelope, shape-checked on restore, and fail-safe (memory-only, one warning). No new
+dependency. *Alternatives:* `pinia-plugin-persistedstate`, `localStorage` (outlives the kiosk session).
