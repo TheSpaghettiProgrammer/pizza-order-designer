@@ -1,4 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using PizzaOrderDesigner.Api.Menu;
+using PizzaOrderDesigner.Api.Pricing;
+using PizzaOrderDesigner.Api.Pricing.Promotions;
 using PizzaOrderDesigner.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,7 +12,25 @@ var connectionString = builder.Configuration.GetConnectionString("PizzaDb")
     ?? throw new InvalidOperationException("Connection string 'PizzaDb' is not configured.");
 
 builder.Services.AddPizzaData(connectionString);
-builder.Services.AddControllers();
+builder.Services.Configure<PricingOptions>(builder.Configuration.GetSection(PricingOptions.SectionName));
+builder.Services.AddScoped<IMenuProvider, EfMenuProvider>();
+builder.Services.AddSingleton<IPromotionRule, PercentOffOrderRule>();
+builder.Services.AddSingleton<IPromotionRule, AmountOffOverThresholdRule>();
+builder.Services.AddSingleton<PromotionEngine>();
+builder.Services.AddSingleton<OrderPricer>();
+builder.Services.AddProblemDetails();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()))
+    .ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = context =>
+    {
+        // Malformed JSON or wrong types: same friendly ProblemDetails shape as our own validation errors.
+        var problem = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>()
+            .CreateValidationProblemDetails(context.HttpContext, context.ModelState, StatusCodes.Status400BadRequest,
+                title: "We couldn't read that request.",
+                detail: "Some values are missing or in the wrong format.");
+        problem.Extensions["code"] = "request.invalid";
+        return new BadRequestObjectResult(problem) { ContentTypes = { "application/problem+json" } };
+    });
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<PizzaDbContext>("database");
@@ -32,3 +55,6 @@ app.MapHealthChecks("/api/health");
 app.MapControllers();
 
 app.Run();
+
+/// <summary>Exposed for WebApplicationFactory in the API tests.</summary>
+public partial class Program;

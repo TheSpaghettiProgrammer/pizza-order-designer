@@ -35,14 +35,14 @@ or **Open** (decided provisionally, revisit later).
 | D-027 | 2026-11-17 | Private GitHub repo `pizza-order-designer`, branch `main` | Accepted |
 | D-028 | 2026-11-17 | Work tracked as GitHub issues + Project board (labels, milestones M0–M4) | Accepted |
 | D-029 | 2026-11-17 | Open questions are `needs-decision` issues with a recommendation; resolved answers become README assumptions | Accepted |
-| D-030 | 2026-11-17 | Four-role subagent workflow (planner → plan reviewer → developer → reviewer) with two user gates | Accepted |
+| D-030 | 2026-11-17 | Four-role subagent workflow (planner → plan reviewer → developer → reviewer) with two user gates | Superseded by D-046 |
 | D-031 | 2026-11-17 | One plan file per story in `docs/plans/`, the single artifact every role writes to | Accepted |
 | D-032 | 2026-11-17 | Branch per story (`story/<N>-<slug>`), PR with `Closes #N`, user merges | Superseded by D-033 |
 | D-033 | 2026-11-17 | No direct pushes to `main`: every change goes through a feature branch + PR the user merges, enforced by a pre-push hook | Accepted |
 | D-034 | 2026-11-17 | Playwright E2E for UI behaviour; Vitest stays for unit tests | Accepted |
 | D-035 | 2026-11-17 | First UI work: Playwright harness (#41), then #25, then #8 → #26 | Accepted |
 | D-036 | 2026-11-17 | A secondary session works in its own git worktree under `.claude/worktrees/` | Accepted |
-| D-037 | 2026-11-17 | Scope: full kiosk vision (start screen, simulated payment, kitchen view) in scope; required path still built first (#1) | Accepted |
+| D-037 | 2026-11-17 | Scope: full kiosk vision (start screen, simulated payment, kitchen view) in scope; required path still built first (#1) | Superseded by D-046 |
 | D-038 | 2026-11-17 | Pricing math: tax after discount, tip untaxed, round half-up, tax rounded once per order, tip % on pre-tax total (configurable) (#2) | Accepted |
 | D-039 | 2026-11-17 | Pricing runs on the server only; the UI shows server quotes; submit re-prices and rejects a mismatch (#3) | Accepted |
 | D-040 | 2026-11-17 | Cancel deletes the order; idempotency records outlive orders; status flow is linear (#4) | Accepted |
@@ -51,6 +51,7 @@ or **Open** (decided provisionally, revisit later).
 | D-043 | 2026-11-17 | Validation limits; an ineligible SAVE5 is rejected with a message (#7) | Accepted |
 | D-044 | 2026-11-17 | Kiosk flow: `/` start, `/order` builder, route guard, one shared exit path (#25) | Accepted |
 | D-045 | 2026-11-17 | Draft order in a Pinia store, persisted to sessionStorage (versioned, fail-safe) (#25) | Accepted |
+| D-046 | 2026-11-17 | Timebox reset: 4 batched PRs, slim process, scope cut list. Supersedes D-030, D-037 | Accepted |
 
 ---
 
@@ -275,7 +276,7 @@ one story are asked inside that story instead.
 **Why:** The assignment says the Assumptions section is "read closely". Capturing the questions up front
 makes it complete and traceable.
 
-### D-030 — Subagent workflow
+### D-030 — Subagent workflow (Superseded by D-046)
 **Decision:** Every non-trivial story goes through four subagent roles, defined in `.claude/agents/`
 and governed by `docs/SUBAGENTS.md`:
 
@@ -392,7 +393,7 @@ branch. The PR says which session wrote it.
 
 Each of these becomes a line in the README **Assumptions** section (#37).
 
-### D-037 — Scope: full kiosk vision (#1)
+### D-037 — Scope: full kiosk vision (#1) (Superseded by D-046)
 **Decision (the user's, against the recommendation):** The full self-order kiosk experience is in scope:
 a start screen (#25), a simulated payment step (#29) and a kitchen view (#33), on top of everything
 the assignment requires. Those three stories move from `P2-stretch` to `P1-should`.
@@ -496,3 +497,21 @@ A Pinia setup store holds `{ lines[{ id, sizeCode, toppingCodes, quantity }], pr
 value: string } }`: menu codes only, no prices (D-039). It's persisted to **sessionStorage** in a
 versioned envelope, shape-checked on restore, and fail-safe (memory-only, one warning). No new
 dependency. *Alternatives:* `pinia-plugin-persistedstate`, `localStorage` (outlives the kiosk session).
+
+### D-046 — Timebox reset: batched PRs, slim process, cut list (supersedes D-030, D-037)
+**Decision (the user's, after a process review):** Planning one P1 screen took four opus runs and an
+871-line plan, so the rest is delivered in **4 batched PRs**, with one commit per story and issues closed
+from the PR body:
+- **A:** pricing #8–#14, #34
+- **B:** order service #15–#22, #35
+- **C:** UI #26–#28, #30–#32
+- **D:** README #37
+
+**Process:** the main session implements A and C directly. B gets one short plan (≤ ~150 lines) for
+idempotent submit and the cancel-vs-kitchen race. One reviewer pass per PR; the orchestrator re-runs the
+checks; one user approval per PR; sonnet for developer and UI work.
+**Tracking:** 2–3 line decisions, one WORKLOG entry per PR, and docs ride inside the feature PR.
+**Cut to the README cut list:** #44 idle timeout, #29 simulated payment, #33 kitchen view (the D-042
+endpoint plus curl is enough), #23 structured logging, #24 OpenAPI UI (unless free), #36 frontend
+component tests, #38 CI.
+**Budget order if time runs short:** cut C before B. The brief weights pricing and lifecycle over UI.

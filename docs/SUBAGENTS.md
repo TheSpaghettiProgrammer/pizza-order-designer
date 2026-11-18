@@ -7,6 +7,25 @@ conversation with the user, briefs each subagent, checks its output, and keeps t
 > The agent definitions live in [`.claude/agents/`](../.claude/agents/). This document is the contract
 > they follow. If the two disagree, this document wins; fix the agent file.
 
+## 0. Current process (D-046, supersedes D-030)
+
+The full four-role flow below (sections 2–4) was used for #25 and is kept as history and as the
+pattern for any story that needs it. **From PR A onward the process is slimmer:**
+
+| PR | Stories | Who implements | Planning | Review |
+|---|---|---|---|---|
+| A, pricing core | #8–#14, #34 | main session | none | one `pizza-reviewer` pass (opus) |
+| B, order service | #15–#22, #35 | main session or `pizza-developer` (sonnet) | **one short plan (≤ ~150 lines)** for idempotent submit and the cancel-vs-kitchen race | one reviewer pass |
+| C, order builder UI | #26–#28, #30–#32 | `pizza-developer` (sonnet) or main session | none | one reviewer pass |
+| D, README | #37 | main session | none | the user |
+
+- One commit per story inside each PR, `Refs #N` in commits, `Closes #N` in the PR body.
+- The main session re-runs the checks (§6) itself before opening a PR. **One user approval per PR.**
+- Sections 5–8 (briefing template, shared rules and checks, verdicts, escalation) still apply to every
+  subagent run.
+- When the `pizza-*` agent types aren't registered in a session, run a `general-purpose` agent with the
+  role's model and tell it to follow `.claude/agents/<role>.md` as its contract.
+
 ---
 
 ## 1. Principles

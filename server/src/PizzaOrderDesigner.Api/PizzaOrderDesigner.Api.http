@@ -1,10 +1,32 @@
 @PizzaOrderDesigner.Api_HostAddress = http://localhost:5158
 
+### Health (API + database)
 GET {{PizzaOrderDesigner.Api_HostAddress}}/api/health
 
-###
-
-GET {{PizzaOrderDesigner.Api_HostAddress}}/openapi/v1.json
+### Menu: sizes, topping categories, per-size topping prices
+GET {{PizzaOrderDesigner.Api_HostAddress}}/api/menu
 Accept: application/json
 
-###
+### Quote: the API contract's worked example → total 31.23
+POST {{PizzaOrderDesigner.Api_HostAddress}}/api/orders/quote
+Content-Type: application/json
+
+{
+  "lines": [ { "sizeCode": "large", "toppingCodes": ["pepperoni", "bacon"], "quantity": 2 } ],
+  "promoCode": "ILOVEPIZZA",
+  "tip": { "mode": "percent", "value": "15" }
+}
+
+### Quote: SAVE5 on an order that isn't over $20 → 400 with a field error
+POST {{PizzaOrderDesigner.Api_HostAddress}}/api/orders/quote
+Content-Type: application/json
+
+{
+  "lines": [ { "sizeCode": "small", "toppingCodes": [], "quantity": 2 } ],
+  "promoCode": "SAVE5",
+  "tip": { "mode": "amount", "value": "2.50" }
+}
+
+### OpenAPI document (Development)
+GET {{PizzaOrderDesigner.Api_HostAddress}}/openapi/v1.json
+Accept: application/json
