@@ -3,10 +3,19 @@
 | | |
 |---|---|
 | **Story** | https://github.com/TheSpaghettiProgrammer/pizza-order-designer/issues/25 |
-| **Branch** | `story/25-kiosk-start-screen`, stacked on `chore/41-playwright-e2e` (PR #42, not merged yet) |
-| **Status** | Plan review: round 1 = REVISE. Waiting on the user (idle timeout, defaults) and the D-number fix before planner round 2 |
-| **Depends on** | #41 (Playwright harness) |
-| **Decisions** | D-011, D-020, D-024, D-025, D-034, D-035 |
+| **Branch** | `story/25-kiosk-start-screen` (#42 and #43 merged into `main`; `main` merged into this branch) |
+| **Status** | Planner round 2 (round 1 = REVISE). The user has answered the open questions (see below) |
+| **Depends on** | #41 (Playwright harness, merged). **Follow-up:** #44 (idle timeout) builds on this story |
+| **Decisions** | D-011 (same-origin `/api`), D-020 (Quasar CLI), D-024 (history router), D-025 (strip demo content), D-034 (Playwright E2E), D-035 (UI work order), D-037 (full kiosk scope), D-043 (validation limits, one promo code) |
+
+**The user's answers (2026-11-17), for round 2:**
+- **AC 4, the idle timeout:** moved to its own story, **#44** (P1, depends on #25). It's out of scope for #25. Keep the
+  Cancel path reusable so #44 can call the same `cancelOrder()` → start-screen flow.
+- **Cancel order always confirms**, even for an empty order: **kept**.
+- **While an order is open, `/` (and the 404 page's "Go Home") redirect to `/order`**, so Cancel is the only exit: **kept**.
+- **Promo field (reviewer Major 2):** one code per order (D-043), so `promoCode: string | null` stays.
+- **Decision numbers:** D-034 to D-036 are the Playwright session's, and D-037 to D-043 are the M0 answers. New decisions
+  from this plan get the next free numbers, **D-044 and up**, which the orchestrator assigns.
 
 > Workflow and rules: [docs/SUBAGENTS.md](../SUBAGENTS.md). Each role writes only its own section.
 > Later rounds are appended as `### Round 2`, never overwritten.
@@ -323,6 +332,393 @@ don't apply, because the store holds no money. #1 (scope) is open, but the user 
    confirmation, so it always asks.]
 3. Is it OK that, while an order is in progress, `/` (and the 404 page's "Go Home") redirects to the order,
    so Cancel is the only way back to the start screen? [Yes, that's the kiosk rule.]
+
+### Round 2
+
+Round 2 is a complete plan. The developer follows **this round only**; Round 1 above is kept for the history.
+Decisions are cited by number **and** title, so they survive renumbering.
+
+#### Response to review round 1
+
+| # | Finding | How Round 2 resolves it |
+|---|---|---|
+| 1 | Major: the M0 status is out of date (AC 4 deferral, #7 limits) | Rebased on the merged decisions. AC 4 is **out of #25** by the user's choice and is now **#44** (idle timeout, depends on #25). The walk-away case is #44's job, so the guard rule ("Cancel is the only exit", kept by the user) stands. For #44 the plan adds one shared exit path, `useEndOrder().endOrder()` (clear the draft, then go to start), used by the Cancel button now and by #44's countdown later (1.2, 1.7). The store not enforcing limits is now justified by D-043 (validation limits, one promo code): quantity 1–20, 1–25 lines and the topping set are server rules, and #26's UI caps them. Pricing: D-039 (server-only pricing), so the draft holds no money. |
+| 2 | Major: the promo field's shape vs the decision | Resolved by D-043 (validation limits, one promo code): one code per order, so `promoCode: string \| null` stays. A README assumption line is proposed ("one promo code per order; entering a new one replaces the old one"). |
+| 3 | Minor: step 2 wouldn't stay green (E1 checks Cancel before it exists) | E1 in step 2 checks only the start → order flow. The "Cancel only while building" assertions are added to E1 in step 3, together with `CancelOrderButton`. Each step's file list and tests are checked against what exists at that point (1.4). |
+| 4 | Minor: ambiguous Playwright locators | All locators are scoped and exact: the Cancel button through `getByRole('banner')`, the dialog buttons through `getByRole('dialog')`, and `exact: true` everywhere (1.5, "Locators"). The Round 1 sentence about distinct labels is replaced. |
+| 5 | Minor: decision-number collisions | Settled by the orchestrator (D-034 to D-043 are now fixed). This round cites number + title, and proposes **D-044 and D-045** as placeholders the orchestrator assigns. |
+| 6 | Minor: `TipInput.value` sets the wire contract | Reworded. The draft keeps the customer's raw input as a string so no float touches money. The request's wire format is decided by #12/#14, and #27's client maps to it (1.2). |
+| 7 | Minor: one `console.warn` per mutation with broken storage | Warn once. `createDraftPersistence()` returns `{ load, save }` with its own `warned` flag. The store creates one per instance, so it's once per page load, and tests get a fresh flag without a test-only export. U4, U10 (and the optional E8) assert exactly one warning. |
+| 8a | Minor: lint (`no-unsafe-*`, `no-floating-promises`) | `const parsed: unknown = JSON.parse(raw)` narrowed by type guards. Every navigation is `await`ed or `void`ed (`void endOrder()`, `void router.push(...)`). |
+| 8b | Minor: fragile storage stubbing in U4 | `vi.spyOn(globalThis, 'sessionStorage', 'get')`, either throwing a `DOMException('denied', 'SecurityError')` or returning a fake `Storage` whose methods throw. Undone by `vi.restoreAllMocks()`. |
+| 8c | Minor: keep `useDraftOrderStore(store)` inside `beforeEach` | Stated in 1.2 and step 2 with the reason. The "store undefined" fallback is removed from the risks (verified by the reviewer). |
+| 9 | Minor: proportion | Round 1's E4 is merged into the refresh spec (E4 now). The storage-unavailable E2E (E8) is **optional**: keep it only if it passes first time, otherwise rely on U4/U10 and note it. U9 (item count) is folded into U7, and U9 now checks that a fresh or corrupt session starts with no draft. Result: 12 unit tests (several are small `it.each` tables) + 8 required E2E specs (+1 optional), down from 12 + 10. |
+| 10 | Minor: no Back-button / Escape checks | E3 calls `page.goBack()` after confirming and expects `/` with Start order. E2 also dismisses with `Escape` and expects the draft kept. |
+| 11 | Minor: README has no owner | The **orchestrator** adds the README assumption lines (1.7) when it records D-044/D-045, alongside the M0 lines that #37 collects (D-037 says each decision becomes a README line). The developer doesn't touch `README.md`. |
+
+#### 1.1 Goal and scope (Round 2)
+#25 gives the kiosk its first real flow: a welcome screen with a large **Start order** button, then an order
+builder at `/order` that holds a **draft order** in a Pinia store. A **Cancel order** button in the header always
+asks for confirmation, clears the draft and returns to the start screen. The draft is saved to `sessionStorage`,
+so a refresh keeps it. The store's types are designed now so #26 (line items), #27 (quote) and #28 (promo code,
+tip) only **add actions**. The store holds **no prices** and does no money math, per D-039 (server-only
+pricing). No backend change.
+
+- **In scope:**
+  - AC 1: welcome screen + large Start order button.
+  - AC 2: Cancel order, available on every building route and only there. It always confirms (even for an
+    empty order, the user's choice), clears the draft, and returns to the start screen.
+  - AC 3: draft in Pinia, kept across a refresh through sessionStorage, and fail-safe when storage is corrupt,
+    unavailable or full.
+- **"Start over"** (the story title) means *cancel, then Start order again gives a fresh, empty draft*. No
+  separate button, since no AC asks for one. README assumption (1.7).
+- **Out of #25: AC 4, the idle timeout.** It's now story **#44** (P1, depends on #25), by the user's choice.
+  #25 prepares for it in two ways, at no extra cost:
+  - `meta.building` marks the routes where #44's timer runs.
+  - `useEndOrder().endOrder()` is the single "clear the draft → start screen" path. The Cancel button uses it
+    now, and #44's countdown calls the same function, so there's no duplicated logic (#44's AC).
+- **Out of scope:** line items, menu, sizes and toppings (#26); totals and the quote (#27); tip and promo inputs
+  (#28); cancelling a *submitted* order (#19, D-040 (cancel deletes the order)); validation limits. The store
+  deliberately enforces none: D-043 (validation limits, one promo code) makes them server rules, and #26's UI
+  caps the inputs.
+
+#### 1.2 Approach (Round 2)
+
+**Draft-order model** (`src/models/draft-order.ts`, types plus one factory, no Vue):
+```ts
+export interface DraftLine {
+  id: string;             // client-side key for edit/remove and v-for; #26 generates it
+  sizeCode: string;       // menu code from #8, e.g. 'large' (codes, never DB ids or prices)
+  toppingCodes: string[]; // menu codes; a set per D-043, which #26's UI and the server enforce
+  quantity: number;       // integer count; the 1–20 limit is a server rule (D-043)
+}
+export type TipMode = 'amount' | 'percent';
+export interface TipInput {
+  mode: TipMode;
+  value: string;          // exactly what the customer typed, e.g. '2.50' or '15'
+}
+export interface DraftOrder {
+  lines: DraftLine[];
+  promoCode: string | null; // one code per order (D-043); raw input, the server trims and normalizes it
+  tip: TipInput | null;     // null = no tip chosen yet
+}
+export function createEmptyDraft(): DraftOrder; // { lines: [], promoCode: null, tip: null }
+```
+- Required fields with `| null` rather than optional properties: `exactOptionalPropertyTypes` is on, and a fixed
+  shape keeps the restore validation simple.
+- **The tip stays a string** so no float ever touches money in the client. The **wire format** of the quote
+  request (how a tip value is sent) is decided by #12/#14. #27's API client maps the draft to it. #25 decides
+  nothing about the request.
+- No money fields. The only number is `quantity`, a count. `itemCount` is a sum of counts.
+
+**Persistence** (`src/stores/draft-order-persistence.ts`, hand-rolled, no new dependency):
+```ts
+export const DRAFT_STORAGE_KEY = 'pizza-order-designer:draft-order';
+// Bump when the DraftOrder shape changes. Older drafts are then discarded on load (fine for a draft).
+export const DRAFT_SCHEMA_VERSION = 1;
+export function parseStoredDraft(raw: string | null): DraftOrder | null; // pure, never throws
+export interface DraftPersistence {
+  load(): DraftOrder | null;
+  save(draft: DraftOrder | null): void;
+}
+export function createDraftPersistence(): DraftPersistence; // owns the warn-once flag
+```
+- The stored value is an envelope `{ "version": 1, "draft": DraftOrder }`.
+- `parseStoredDraft`:
+  - `null` → `null`. Otherwise `let parsed: unknown;` inside `try { parsed = JSON.parse(raw) } catch { return null }`,
+    then narrowed with small type guards (`isRecord(v): v is Record<string, unknown>`, `isStringArray`, …).
+    No `any`, so `no-unsafe-*` stays quiet.
+  - Accepts only: `version === 1`; `lines` an array of `{ id: string, sizeCode: string, toppingCodes: string[],
+    quantity: number }` with `Number.isInteger(quantity)`; `promoCode` a string or `null`; `tip` `null` or
+    `{ mode: 'amount' | 'percent', value: string }`.
+  - Returns a **fresh object with only the known fields**, so stray keys never reach the store.
+  - It checks **shape only**. Whether a code is still on the menu, or a quantity is within 1–20, is the server's
+    call (D-043; #10 returns field errors) and surfaces in #26/#27.
+- `createDraftPersistence()` keeps `let warned = false` in its closure, plus `warnOnce(error)`, which logs one
+  `console.warn("The order can't be saved in this browser, so it won't survive a refresh.", error)` and then
+  stays silent.
+  - `load()`: reads `globalThis.sessionStorage` **inside** the try (the property access itself can throw a
+    `SecurityError`), then `getItem`. A thrown error → `warnOnce`, return `null`. If the raw value isn't `null`
+    but doesn't parse, it calls `removeItem` (best-effort, errors → `warnOnce`) and returns `null`. Never throws.
+  - `save(draft)`: `setItem(KEY, JSON.stringify({ version: 1, draft }))`, or `removeItem(KEY)` for `null`. Any
+    error (quota, unavailable) → `warnOnce`. The app carries on in memory; only refresh survival is lost.
+  - One persistence instance per store instance, so it warns **once per page load**, and each unit test gets a
+    fresh flag without a test-only export.
+- **sessionStorage, not localStorage:** a kiosk is shared. Closing the tab must not leave the last customer's
+  order behind, while a refresh keeps it (what the AC asks for).
+
+**Store** (`src/stores/draft-order-store.ts`, a Pinia **setup** store, `defineStore('draftOrder', () => …)`
+imported from `pinia`):
+```ts
+const persistence = createDraftPersistence();
+const draft = ref<DraftOrder | null>(persistence.load());       // null = no order in progress
+const hasDraft = computed(() => draft.value !== null);
+const itemCount = computed(() => draft.value?.lines.reduce((n, l) => n + l.quantity, 0) ?? 0);
+function startOrder(): void { draft.value = createEmptyDraft(); }  // always fresh: the "start over" invariant
+function cancelOrder(): void { draft.value = null; }
+watch(draft, (d) => persistence.save(d), { deep: true, flush: 'sync' });
+return { draft, hasDraft, itemCount, startOrder, cancelOrder };
+```
+- Loading in setup means every new Pinia instance rehydrates. The unit tests use that to simulate a refresh.
+- The sync, deep watch means every mutation, including #26's future line edits, is in storage before the next
+  statement runs. No manual save call, and the tests need no `nextTick`.
+- #26/#27/#28 add actions (`addLine`, `updateLine`, `removeLine`, `setPromoCode`, `setTip`). The shape and the
+  persisted schema stay `version: 1`.
+
+**The shared exit path** (`src/composables/use-end-order.ts`):
+```ts
+export function useEndOrder() {
+  const store = useDraftOrderStore();
+  const router = useRouter();
+  // Clear the draft FIRST, then navigate: while a draft exists the guard sends `/` back to `/order`.
+  // Used by Cancel order (#25) and by the idle-timeout countdown (#44).
+  async function endOrder(): Promise<void> {
+    store.cancelOrder();
+    await router.push({ name: 'start' });
+  }
+  return { endOrder };
+}
+```
+- Called in component setup (it uses `useRouter()`).
+- For #44: QDialog hides itself on a route change unless it's `persistent` (Quasar's `hideOnRouteChange`, checked
+  in `quasar/src/components/dialog/QDialog.js`), and the Dialog plugin shares the app's context, so the router
+  is visible to it. So if #44's countdown calls `endOrder()` while the Cancel dialog is open, the dialog should
+  close as the route changes. #44's spec should still prove it.
+
+**Routes and guard:**
+- `src/router/routes.ts`: both routes are children of `MainLayout`, so the header and the smoke spec stay valid.
+  - `''` → `name: 'start'`, `StartPage.vue`.
+  - `'order'` → `name: 'order'`, `OrderPage.vue`, `meta: { building: true }`.
+  - `declare module 'vue-router' { interface RouteMeta { building?: boolean } }`. Later building routes (e.g.
+    `/order/review`) only set `building: true` to get the guard, the Cancel button and #44's timer.
+  - The catch-all 404 route stays last and outside `MainLayout`, unchanged.
+- `src/router/kiosk-guard.ts`, a pure function:
+  `kioskRedirect(to: Pick<RouteLocationNormalized, 'name' | 'meta'>, hasDraft: boolean): RouteLocationRaw | true`.
+  - `to.meta.building && !hasDraft` → `{ name: 'start' }`. A deep link or bookmark to `/order` without a draft
+    never shows a half-built page, and Back after a cancel lands on start.
+  - `to.name === 'start' && hasDraft` → `{ name: 'order' }`. While an order is open, `/`, the Back button and
+    the 404 page's "Go Home" all lead to the order, so **Cancel is the only exit** (the user's choice).
+  - Otherwise `true` (the 404 page and future non-kiosk routes are untouched).
+  - No loop: each redirect target passes the guard under the same `hasDraft` (G2).
+- `src/router/index.ts`: `defineRouter(({ store }) => { … Router.beforeEach((to) => kioskRedirect(to,
+  useDraftOrderStore(store).hasDraft)); … })`.
+  - `useDraftOrderStore(store)` stays **inside** the `beforeEach` callback. Hoisted to `defineRouter`'s top
+    level, the store would be created before Quasar's `app.js` registers the plugin that sets `store.router`.
+  - Quasar installs Pinia before it creates the router, and the first navigation happens later, so the store
+    (and its rehydration) is ready for the first guard call.
+
+**Pages and components:**
+- `src/pages/StartPage.vue` (replaces the placeholder `IndexPage.vue`):
+  - Centred `<h1 class="text-h3">Welcome!</h1>`, a one-line prompt, and one big `q-btn` "Start order"
+    (`size="xl"`, `unelevated`, `no-caps`, `color="primary"`, at least 96 px tall, up to 480 px wide, full width
+    on narrow screens).
+  - Click → `store.startOrder()`, then `void router.push({ name: 'order' })`.
+- `src/pages/OrderPage.vue`, the builder shell #26 fills in:
+  - `<h1 class="text-h4">Your order</h1>`.
+  - "No pizzas in your order yet." when `itemCount === 0`, otherwise "1 pizza in your order" /
+    "{n} pizzas in your order". A count, not money. It also lets the E2E prove the draft came back from storage.
+- `src/components/CancelOrderButton.vue`:
+  - A header `q-btn` "Cancel order" (`flat`, `size="lg"`, `no-caps`, icon `close`, at least 48 px tall). QIcon's
+    ligature is `aria-hidden`, so the button's accessible name is just "Cancel order".
+  - Click → `$q.dialog({ title: 'Cancel this order?', message: 'Everything in your order will be removed.',
+    cancel: { label: 'Keep my order', flat: true, noCaps: true }, ok: { label: 'Yes, cancel order', color:
+    'negative', noCaps: true }, focus: 'cancel' })`. `focus: 'cancel'` means a stray Enter keeps the order.
+  - `.onOk(() => { void endOrder(); })`. Dismissing (Escape, backdrop, "Keep my order") keeps the draft. Not
+    `persistent`, because dismissing is the safe outcome.
+- `src/layouts/MainLayout.vue`: adds `<script setup lang="ts">` with `useRoute()`, and shows
+  `<CancelOrderButton v-if="route.meta.building" />` in the toolbar after the title. The header is fixed (`hHh`),
+  so Cancel is available throughout building. The title "Pizza Order Designer" stays (the smoke spec checks it).
+- `quasar.config.ts`: `framework.plugins: ['Dialog']`. The only config change.
+
+**Alternatives considered** (unchanged from Round 1, plus one):
+- `pinia-plugin-persistedstate`: a new dependency for ~30 lines, and no shape validation on restore. Rejected.
+- Quasar's `SessionStorage` plugin: its own type-prefix encoding, and still needs validation and try/catch.
+- An inline `QDialog` instead of the Dialog plugin: more template for the same result.
+- A separate `OrderLayout` for building routes: duplicates the header. `meta.building` is lighter.
+- "Continue order / Start new" on the start screen: more UI than the ACs ask for; the guard keeps one exit.
+- **New:** navigating inside the store's `cancelOrder()` (or a watcher that leaves building routes when the
+  draft disappears). It would also give #44 one path, but it hides navigation in a state action or a side
+  effect. An explicit composable is easier to read and test.
+
+#### 1.3 Changes, file by file (Round 2)
+All paths are under `client/`.
+
+| File | New / Modify | What changes | Step |
+|---|---|---|---|
+| `src/models/draft-order.ts` | New | `DraftLine`, `TipMode`, `TipInput`, `DraftOrder`, `createEmptyDraft()`. No prices. | 1 |
+| `src/stores/draft-order-persistence.ts` | New | `DRAFT_STORAGE_KEY`, `DRAFT_SCHEMA_VERSION = 1` (bump comment), `parseStoredDraft`, `createDraftPersistence` (warn once). Never throws. | 1 |
+| `src/stores/draft-order-store.ts` | New | `useDraftOrderStore`: `draft`, `hasDraft`, `itemCount`, `startOrder`, `cancelOrder`, sync deep watch → `save`. | 1 |
+| `test/vitest/__tests__/draft-order-persistence.test.ts` | New | U1–U4 | 1 |
+| `test/vitest/__tests__/draft-order-store.test.ts` | New | U5–U10 | 1 |
+| `src/router/kiosk-guard.ts` | New | Pure `kioskRedirect(to, hasDraft)`. | 2 |
+| `test/vitest/__tests__/kiosk-guard.test.ts` | New | G1, G2 | 2 |
+| `src/router/routes.ts` | Modify | `start` and `order` (`meta.building`) children of `MainLayout`, `RouteMeta` augmentation, catch-all last. | 2 |
+| `src/router/index.ts` | Modify | Takes `{ store }`; `beforeEach` → `kioskRedirect` (store looked up inside the callback). | 2 |
+| `src/pages/StartPage.vue` | New | Welcome heading and the large Start order button. | 2 |
+| `src/pages/OrderPage.vue` | New | "Your order" heading and the empty state / item count. | 2 |
+| `src/pages/IndexPage.vue` | Delete | The D-025 (strip demo content) placeholder, replaced by `StartPage.vue`. | 2 |
+| `test/vitest/__tests__/IndexPage.test.ts` | Delete | Tested the placeholder. Page behaviour is tested with Playwright (D-034, Playwright E2E). | 2 |
+| `test/e2e/kiosk-start.spec.ts` | New | Step 2: helpers, E1 (flow part), E4–E7. Step 3: E1 banner part, E2, E3. Step 4: E8 (optional), E9. | 2–4 |
+| `quasar.config.ts` | Modify | `framework.plugins: ['Dialog']`. | 3 |
+| `src/composables/use-end-order.ts` | New | `useEndOrder().endOrder()`: clear the draft, then push `start`. Shared with #44. | 3 |
+| `src/components/CancelOrderButton.vue` | New | Header button + confirmation dialog → `endOrder()`. | 3 |
+| `src/layouts/MainLayout.vue` | Modify | `<script setup>`, `CancelOrderButton` on `meta.building` routes. Title unchanged. | 3 |
+| `test/e2e/smoke.spec.ts` | Unchanged | Still valid: a fresh context has no draft, so `/` shows the banner title and Go Home lands on `/`. | – |
+
+No server changes, no new npm dependencies, no `README.md` edits (the orchestrator adds the assumption lines,
+1.7), no Playwright config changes.
+
+#### 1.4 Steps, in order (Round 2; each step leaves lint, types, unit and E2E green, ~one commit each)
+1. **Draft-order model, persistence and store** (+ U1–U10). Nothing imports the store yet, so the app and the
+   existing `IndexPage.test.ts` and smoke specs are unchanged and green.
+   Commit: "Add draft-order store with sessionStorage persistence", `Refs #25`.
+2. **Start screen, order page and kiosk guard** (+ G1, G2, and in `kiosk-start.spec.ts`: E1 *without* any Cancel
+   assertion, E4, E5, E6, E7). Delete `IndexPage.vue` and `IndexPage.test.ts` in this same step (the unit suite
+   still has U1–U10, so Vitest doesn't run empty). Smoke stays green: a fresh context has no draft.
+   After this step an open order can't be left from the UI yet (Cancel arrives in step 3). That's fine for an
+   intermediate commit on the branch, and no spec in step 2 needs to leave an order.
+   Commit: "Add kiosk start screen, order page and draft route guard", `Refs #25`.
+3. **Cancel order with confirmation**: the Dialog plugin, `use-end-order.ts`, `CancelOrderButton.vue`,
+   `MainLayout.vue` (+ E1's banner assertions, E2, E3).
+   Commit: "Add Cancel order with confirmation to the order builder", `Refs #25`.
+4. **Resilience and tablet checks** (+ E9, and E8 if it passes first time; otherwise drop it and say so in the
+   implementation notes, since U4/U10 cover it). Then `npx quasar build`.
+   Commit: "Cover tablet touch targets and unavailable storage in kiosk E2E", `Refs #25`.
+
+**Checks after each step**, from `client/`:
+- `npx prettier --check --end-of-line auto <files changed in the step>`
+- `npx eslint -c ./eslint.config.js "./src*/**/*.{ts,js,cjs,mjs,vue}" test/e2e test/vitest`
+- `npm run typecheck` (vue-tsc; `.quasar/tsconfig.json` includes `test/`)
+- `npm test` (Vitest)
+- `npm run test:e2e` (Playwright, Chromium, own dev server on :9100; these specs don't need the API)
+- `npx quasar build` (once, after step 4)
+
+Don't rely on `npm run lint:check` (it runs prettier without `--check`, plus a CRLF issue). It's being fixed on
+a separate `fix/` branch. If that fix is merged into this branch before implementation, the developer may use it
+as well, but the commands above stay the reference.
+
+Rough effort: 55–70 min of developer time.
+
+#### 1.5 Tests (Round 2)
+**Unit tests** (Vitest, `test/vitest/__tests__/`). `beforeEach`: `sessionStorage.clear()`,
+`setActivePinia(createPinia())`. `afterEach`: `vi.restoreAllMocks()`. Storage failures are simulated only with
+`vi.spyOn(globalThis, 'sessionStorage', 'get')`, either `.mockImplementation(() => { throw new
+DOMException('denied', 'SecurityError') })` or `.mockReturnValue(fakeStorage)`, where `fakeStorage`'s
+`getItem`/`setItem`/`removeItem` throw. `console.warn` is spied (`vi.spyOn(console, 'warn').mockImplementation(()
+=> {})`) wherever storage fails, which keeps the output clean and lets the test count warnings.
+
+| # | Test | Level | Invariant or AC it proves |
+|---|---|---|---|
+| U1 | `parseStoredDraft` round-trips a valid envelope with lines, promo and tip, and the result has only the known fields (extra keys on the envelope, the draft and a line are dropped) | unit | AC 3. Restored state has exactly the model's shape |
+| U2 | `it.each`: `parseStoredDraft` → `null` for `null`, invalid JSON, `version: 2`, missing `draft`, `lines` not an array, `quantity` `1.5` or `'2'`, `toppingCodes` not a string array, `tip.mode: 'cash'`, numeric `tip.value`, `promoCode: 5` | unit | Corrupt or old data never reaches the store |
+| U3 | `load()` with an unparseable stored value returns `null` **and removes the key** | unit | A bad entry is cleaned up, not re-read on every load |
+| U4 | `it.each` over {getter throws, methods throw}: `load()` returns `null`, `save(draft)` and `save(null)` don't throw, and `console.warn` was called **exactly once** across all three calls | unit | Unavailable or full storage never breaks the app, and warns once |
+| U5 | `startOrder()` → `hasDraft`, draft deep-equals `{ lines: [], promoCode: null, tip: null }`, `itemCount === 0`, and storage holds `{ version: 1, draft }` | unit | AC 1/3. A started order is persisted immediately (sync watch) |
+| U6 | `cancelOrder()` after a start → `draft === null`, `hasDraft === false`, and the key is removed | unit | AC 2. Cancel clears the draft in memory and in storage |
+| U7 | Rehydration: start, push two lines directly onto `draft.lines` (quantities 2 and 3, simulating #26), then `setActivePinia(createPinia())` and a new store → same draft (deep-equal) and `itemCount === 5` | unit | AC 3. A refresh keeps the draft, including nested mutations (deep watch); the count sums quantities |
+| U8 | Start over: seed storage with a draft that has lines, a promo and a tip, create the store (rehydrated), then `startOrder()` → lines empty, promo and tip `null`, and storage holds the empty draft | unit | A new order never inherits the previous customer's draft |
+| U9 | No stored draft, or an unparseable one → a new store has `draft === null` and `hasDraft === false` | unit | A fresh or corrupt session starts at the start screen |
+| U10 | With the getter throwing: a new store starts with `draft === null`; `startOrder()`, a line mutation and `cancelOrder()` all change the in-memory state; `console.warn` called **exactly once** in total | unit | Memory-only mode works, and stays quiet after the first warning |
+| G1 | `it.each`, `kioskRedirect`: building route without a draft → `{ name: 'start' }`; start with a draft → `{ name: 'order' }`; start without a draft → `true`; building route with a draft → `true`; an unnamed route with empty meta (the 404) → `true` for both `hasDraft` values | unit | No half-built page without a draft; Cancel is the only exit; 404 untouched |
+| G2 | For each redirect in G1, resolving the target to its route (`{ name: 'start', meta: {} }` / `{ name: 'order', meta: { building: true } }`) and calling `kioskRedirect` again with the same `hasDraft` → `true` | unit | No redirect loop |
+
+**End-to-end tests** (Playwright, `test/e2e/kiosk-start.spec.ts`, Chromium; each test gets a fresh context, so
+sessionStorage starts empty). Seeded drafts use a small helper in the spec with the **literal** key
+`'pizza-order-designer:draft-order'` and `version: 1`, so a change to the key or schema fails these tests loudly
+(intended).
+
+*Locators* (defined once at the top of the spec; all exact, all scoped):
+```ts
+const startButton  = (p: Page) => p.getByRole('button', { name: 'Start order', exact: true });
+const cancelButton = (p: Page) => p.getByRole('banner').getByRole('button', { name: 'Cancel order', exact: true });
+const dialog       = (p: Page) => p.getByRole('dialog');
+const keepButton   = (p: Page) => dialog(p).getByRole('button', { name: 'Keep my order', exact: true });
+const confirmButton = (p: Page) => dialog(p).getByRole('button', { name: 'Yes, cancel order', exact: true });
+```
+Dialog open/close is asserted with web-first `toBeVisible()` / `toBeHidden()` on `dialog(page)`, never fixed waits.
+
+| # | Test | Step | Invariant or AC it proves |
+|---|---|---|---|
+| E1 | `/` shows the "Welcome!" heading and Start order. Click → URL `/order`, "Your order" heading and "No pizzas in your order yet." visible. **Step 3 adds:** `cancelButton` is hidden on `/` and visible on `/order` | 2, 3 | AC 1. AC 2: Cancel is available while building, and only then |
+| E2 | On `/order`: Cancel order → dialog visible → **Keep my order** → dialog hidden, still `/order`. Cancel order again → press `Escape` → dialog hidden, still `/order`. Reload → still `/order` | 3 | AC 2. Confirmation is required; declining (button or Escape) keeps the draft |
+| E3 | On `/order`: Cancel order → **Yes, cancel order** → URL `/`, Start order visible, storage key gone (`page.evaluate`). `page.goBack()` → URL `/`, Start order visible (the guard sends the draft-less `/order` back to start). Start order again → `/order`, "No pizzas in your order yet." | 3 | AC 2: clears and returns to start; Back can't revive a cancelled order; "start over" gives a fresh draft. Also proves `endOrder()` clears **before** navigating (otherwise the guard would bounce to `/order`) |
+| E4 | Start order, then seed a draft with one line of `quantity: 2`, reload → still `/order` and "2 pizzas in your order" | 2 | AC 3. A refresh keeps the draft, and the state really comes from storage, not just the URL (merges Round 1's E4 and E5) |
+| E5 | `goto('/order')` with no draft → URL `/`, Start order visible | 2 | The guard: no builder without a draft |
+| E6 | Start order, then `goto('/')` → URL `/order`. Then `goto('/no/such/page')` → 404 → **Go Home** → URL `/order` | 2 | The guard: while an order is open, the start screen is unreachable, including from the 404 page (the user's choice) |
+| E7 | `addInitScript` puts `'{not json'` under the key; `goto('/order')` → URL `/`, storage key removed; Start order → `/order` | 2 | Corrupt storage never breaks the app and is cleaned up |
+| E8 *(optional)* | `addInitScript` makes the `window.sessionStorage` getter throw a `SecurityError`; Start order → `/order`; Cancel → confirm → `/`; at most one `console` warning collected via `page.on('console')` | 4 | The app works with storage unavailable (memory-only). Dropped if it isn't green first time; U4/U10 cover it |
+| E9 | `test.describe` with `test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true })`: Start order's bounding box is ≥ 48 px tall and lies within the 768 px width. On `/order`, Cancel order is visible and ≥ 48 px tall | 4 | Kiosk feel: large touch targets at tablet width |
+| S1–S2 | The existing `smoke.spec.ts`, unchanged | – | The app shell and the 404 → Go Home path still work |
+
+**Tablet viewport project: not added now** (unchanged from Round 1). E9 covers the one tablet claim that matters
+today. #26 (the customizer, whose AC says "works at tablet/kiosk widths") is the time to add a `tablet` project:
+`devices['Desktop Chrome']` with a 768×1024 viewport and `hasTouch`, not `devices['iPad …']` (WebKit; only
+Chromium is installed per D-034, Playwright E2E).
+
+#### 1.6 Acceptance criteria mapping (Round 2)
+| AC (from the issue) | Step(s) | Test(s) |
+|---|---|---|
+| Welcome screen with a large **Start order** button | 2 (4 for the size check) | E1, E9 |
+| **Cancel order** always available while building. It asks for confirmation, clears the draft and returns to the start screen | 3 (2 for `meta.building` and the guard) | E1 (step 3 part), E2, E3, E9, U6, G1, G2 (E8 optional) |
+| Draft kept in a Pinia store. A page refresh keeps the draft (session storage) | 1, 2 | U1–U5, U7–U10, E4, E5, E7 |
+| Optional (P2): idle timeout returns to the start screen | **Out of #25: story #44** (the user's choice). #25 provides `meta.building` and `endOrder()` for it | none in #25 |
+
+#### 1.7 Risks, assumptions, open questions (Round 2)
+
+**Decisions this plan relies on:** D-011 (same-origin `/api`), D-020 (Quasar CLI), D-024 (history router), D-025
+(strip demo content), D-034 (Playwright E2E), D-035 (UI work order), D-037 (full kiosk scope), D-039 (server-only
+pricing), D-043 (validation limits, one promo code). None is contradicted.
+
+**Proposed decisions** (placeholders; the orchestrator assigns the numbers):
+- **D-044: Kiosk flow, route guard and the shared exit path.**
+  - `/` (start) and `/order` (building, `meta.building`). Building routes need an active draft; the start route
+    redirects to `/order` while one exists (so `/`, Back and the 404's "Go Home" lead back to the order), and
+    **Cancel order** is the only exit. Cancel always confirms, even for an empty order (Quasar Dialog plugin,
+    default focus on "Keep my order").
+  - Leaving an order always goes through `useEndOrder().endOrder()` (clear the draft, then go to start). #44's
+    idle timeout reuses it and runs only on `meta.building` routes.
+  - Playwright tablet project deferred to #26; one 768×1024 touch-target spec for now.
+  - *Alternatives:* "Continue / Start new" on the start screen; a separate building layout; navigating from
+    inside the store.
+- **D-045: Draft-order store and persistence.**
+  - Model `{ lines: [{ id, sizeCode, toppingCodes, quantity }], promoCode: string | null, tip: { mode, value } |
+    null }`: menu **codes** only, **no prices** (D-039, server-only pricing), one promo code (D-043), the tip
+    kept as the customer's raw **string**. The quote request's wire format is left to #12/#14.
+  - Persisted to **sessionStorage** in a hand-rolled versioned envelope (`version: 1`, bump on any shape
+    change), shape-validated on restore. Fail-safe: unreadable data is discarded and removed; with storage
+    unavailable the app runs in memory and warns once per page load. Limits (D-043) are not enforced in the store.
+  - *Alternatives:* `pinia-plugin-persistedstate` (new dependency, no validation), Quasar `SessionStorage`,
+    `localStorage` (would outlive the kiosk session).
+
+**README assumptions** (proposed text; **the orchestrator** adds them when it records D-044/D-045; the developer
+doesn't edit `README.md`):
+- "Cancelling an order before it's sent only clears it in this browser tab; nothing reaches the server.
+  Refreshing the page keeps the order in progress, and closing the tab discards it."
+- "'Start over' means cancelling and then starting a new, empty order. While an order is in progress, the start
+  screen can only be reached through **Cancel order**, which always asks for confirmation."
+- "One promo code per order; entering a new one replaces the old one." (D-043; the UI part lands with #28.)
+
+**Risks:**
+- **E8 (throwing `sessionStorage` getter in the browser).** Low risk (the reviewer found that neither Vite's
+  client nor Quasar touches `sessionStorage`), but it's optional: if it isn't green first time, drop it and note
+  it. U4/U10 prove the same at unit level.
+- **Dialog animation timing.** Web-first `toBeVisible` / `toBeHidden` only, no fixed waits. Scoped, exact
+  locators mean the fading dialog's "Yes, cancel order" can never match the header's "Cancel order".
+- **Button accessible names.** `exact: true` relies on QIcon's ligature being `aria-hidden` (checked in
+  `QIcon.js`). If a name still includes icon text, the developer drops the icon from that button rather than
+  loosening the locator, and notes it.
+- **Intermediate state after step 2:** an open order can't be left from the UI until step 3. Branch-only, and no
+  step 2 spec depends on leaving.
+- **Future `DraftLine.id` generation (#26).** `crypto.randomUUID()` only exists in secure contexts (`localhost`,
+  HTTPS), not over plain HTTP on a LAN IP. #26 should use a fallback or a counter. Recorded for #26's planner.
+- **Stale codes in a restored draft** (the menu changed between refresh and quote): the server rejects unknown
+  codes (D-043, #10), and #26/#27 surface that.
+- *(Removed from Round 1: the "store undefined in `defineRouter`" fallback. The reviewer verified that `store` is
+  defined and typed as `Pinia`.)*
+
+**Questions for the user:** none open. The four Round 1 questions are answered in the header: idle timeout → #44;
+Cancel always confirms; `/` and "Go Home" redirect to `/order` while an order is open; `promoCode: string | null`
+stays (D-043).
 
 ---
 
