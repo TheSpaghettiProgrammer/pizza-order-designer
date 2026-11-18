@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { friendlyMessage } from '@/api/api-error';
+import { fieldMessages, friendlyMessage } from '@/api/api-error';
 import { useDraftOrderStore } from '@/stores/draft-order-store';
 import { useQuoteStore } from '@/stores/quote-store';
 import { formatMoney } from '@/utils/format';
@@ -64,6 +64,9 @@ const hasLines = computed(() => (draftStore.draft?.lines.length ?? 0) > 0);
 
 // Field problems (promo, tip) are shown next to their inputs; this is the general fallback.
 const priceProblem = computed(() => {
+  if (fieldMessages(quote.error, 'promoCode').length || fieldMessages(quote.error, 'tip').length) {
+    return 'Fix the highlighted field to see the price.';
+  }
   const { message } = friendlyMessage(quote.error);
   return `We can't show the price right now. ${message}`;
 });
