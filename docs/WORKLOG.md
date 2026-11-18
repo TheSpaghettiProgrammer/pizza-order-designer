@@ -531,3 +531,31 @@ Mutation checks:
     404s and JSON errors, a key-length message, the price.changed "nothing stored" assertion, 0 build
     warnings, and the PUT-retry 412 documented.
   - **100/100**. Both new tests were mutation-checked.
+
+## 2026-11-17 — Session 7: PR C, order builder UI (#26–#28, #30–#32)
+
+**Built by `pizza-developer` (sonnet)** in its own worktree (`.claude/worktrees/order-ui`), one commit per
+story: #32 API client and friendly errors, #26 menu and customizer, #27 debounced quote and description,
+#28 tip and promo, #30 retry-safe submit, #31 status page with polling and cancel. **Cut:** editing a
+placed order (#31's PUT/If-Match part), so #31 stays open (`Refs`, not `Closes`). Notes are in
+`docs/plans/pr-c-order-builder-ui-notes.md`.
+
+**Verified against the real API** by the orchestrator (PR B's API + this UI, real Postgres):
+- the menu loads from the DB,
+- the running total is server-computed: $28.56 subtotal, $1.86 tax,
+- ILOVEPIZZA + 15% → **$31.23** (the contract example),
+- the order is placed and the status page shows it,
+- after a kitchen advance it shows "Preparing" and Cancel is hidden.
+
+**Review (opus): CHANGES REQUESTED, with 2 Majors that could each create a duplicate or unwanted order.**
+- An edit after an unclear failure minted a new key.
+- Cancel was available during an in-flight submit.
+
+**Fixed by the orchestrator (D-048):** the order locks while a submit is in flight or its outcome is
+unclear, only Retry remains (same body and key), and the pending key and body survive a refresh. Also:
+an unreadable 2xx is treated as unclear, messages show title + detail, and the mock was aligned with the
+real API, including a new "server stored it, response lost" mode.
+
+**Mutation check:** forgetting the key after an unclear failure fails 2 specs.
+
+**Checks:** typecheck, ESLint and Prettier ✅; Vitest **42/42**; Playwright **29/29**.

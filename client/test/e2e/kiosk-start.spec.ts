@@ -1,8 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
+import { mockApi } from './support/mock-api';
 
 // The kiosk flow: start screen, order builder shell and the route guard. Each test gets a fresh
 // browser context, so sessionStorage starts empty. Seeding uses the literal key and schema version
 // on purpose: if either changes, these tests fail loudly.
+
+// The order page now loads the menu; mock it so these specs need no backend.
+test.beforeEach(async ({ page }) => {
+  await mockApi(page);
+});
 
 const STORAGE_KEY = 'pizza-order-designer:draft-order';
 

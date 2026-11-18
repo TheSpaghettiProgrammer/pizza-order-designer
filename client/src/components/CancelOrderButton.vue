@@ -6,6 +6,7 @@
     icon="close"
     label="Cancel order"
     class="cancel-button"
+    :disable="checkout.locked"
     @click="confirmCancel"
   />
 </template>
@@ -13,9 +14,12 @@
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
 import { useEndOrder } from '@/composables/use-end-order';
+import { useCheckoutStore } from '@/stores/checkout-store';
 
 const $q = useQuasar();
 const { endOrder } = useEndOrder();
+// Disabled while sending, or while we don't know whether the order reached the kitchen.
+const checkout = useCheckoutStore();
 
 // Always asks, even for an empty order. Focus starts on "Keep my order", so a stray Enter is safe.
 function confirmCancel(): void {
