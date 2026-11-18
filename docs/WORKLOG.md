@@ -269,3 +269,46 @@ Playwright for UI tests.
 - PR for #41: the user reviews and merges.
 - Then #25: story branch, plan file, `pizza-planner` → `pizza-plan-reviewer` → Gate 1.
 - Follow-up: the `lint:check` / line-endings fix above.
+
+### #25 planning (after PR #42 was opened)
+5. **PR #42** opened (`chore/41-playwright-e2e` → `main`, closes #41). There are no CI checks yet (#38).
+6. **#25 set up:** branch `story/25-kiosk-start-screen`, **stacked on `chore/41-playwright-e2e`**, so its
+   Playwright specs have the harness. It's in the same worktree, because the sandbox wouldn't create a
+   second worktree from inside the first. Board → In Progress. Plan file from the template.
+7. **pizza-planner** wrote section 1:
+   - `/` start page and `/order` builder (`meta.building`), plus a pure, unit-tested `kioskRedirect` guard.
+   - A Pinia setup store holding menu codes only: `{ lines[{id,sizeCode,toppingCodes,quantity}],
+     promoCode, tip{mode,value:string} }`, with no prices.
+   - Hand-rolled, versioned `sessionStorage` persistence that fails safe.
+   - Cancel order in the header, confirmed through the Quasar Dialog plugin.
+   - 12 Vitest + 10 Playwright tests. AC 4 (idle timeout) proposed as deferred.
+8. **pizza-plan-reviewer, round 1: REVISE** (2 Majors, 9 Minors, in section 2):
+   - **M1:** the plan was written against an out-of-date M0 status. My brief said #1–#7 were
+     unanswered, but the main session had decided and closed them in the meantime. The AC 4 deferral
+     has to be weighed again now that the full kiosk is in scope, because without a timeout a
+     walked-away draft stays on screen for the next customer.
+   - **M2:** promo cardinality. **Resolved by the orchestrator:** the #7 decision says "one code per
+     order", so `promoCode: string | null` stands; the planner should cite it.
+   - **Verified by the reviewer** (so the plan's first risk can be dropped): Quasar installs Pinia
+     before it creates the router, and the first navigation happens later, so the guard can read the
+     store.
+9. **Found: a decision-number clash with the main session.**
+   - PR #42 adds D-034 to D-036.
+   - PR #43 (`docs/m0-decisions`) records the M0 answers as D-034 to D-040, but its closing comments
+     on #1–#7, and #25's body, cite **D-037 to D-043**.
+   - Both PRs also add a WORKLOG "Session 3".
+   - The user is coordinating the fix with the main session.
+10. **Handed off:** the user is having the main session take over this work. This session stopped
+    here.
+
+### Open items (for the main session)
+- Fix the D-number and Session-heading clash between PRs #42 and #43. Whichever merges second renames
+  its Session heading.
+- The user decides: AC 4 idle timeout (include in #25, or a follow-up issue), and the planner's defaults
+  (Cancel always confirms; `/` → `/order` while a draft is open).
+- Then planner round 2 on #25 (address M1, M2 and the Minors in section 2, using the accepted M0
+  decisions), a plan review, and Gate 1.
+- After #42 merges: merge `main` into `story/25-kiosk-start-screen`.
+- Remove the worktree `.claude/worktrees/41-playwright-e2e` (it has its own `node_modules`) once it's no
+  longer needed. `.claude/worktrees/` is excluded in `.git/info/exclude`.
+- Follow-up: the `lint:check` / CRLF fix.
