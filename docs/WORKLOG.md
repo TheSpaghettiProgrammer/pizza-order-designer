@@ -587,3 +587,22 @@ and drove it through nginx on :8080:
 
 A first scripted attempt sent malformed JSON (my PowerShell `TrimEnd('}')` stripped every closing brace).
 The server correctly answered 400. Fixed in the script, not the app.
+
+---
+
+## 2026-11-17 — Session 9: fix #48 (Location header behind nginx)
+
+**Bug (found by the user in Docker):** `POST /api/orders` through nginx returned
+`Location: http://localhost/api/orders/{id}`, without `:8080`, so following it failed. The cause was
+`proxy_set_header Host $host;` in `client/nginx.conf`: `$host` drops the port, and ASP.NET builds the
+`CreatedAtAction` URL from the Host header.
+
+**Fix:** `proxy_set_header Host $http_host;`, which keeps the port the client used.
+
+**Regression check:** the new `scripts/smoke-compose.sh` tests the running compose stack through nginx:
+health, menu, the $31.23 quote, a submit **whose Location is followed**, and a same-key retry.
+- **Before the fix**, against the old web container, it failed on #48.
+- **After rebuilding** the web container, it passes.
+
+The Playwright and backend suites never go through nginx, which is why they couldn't catch this. The
+README's Tests section now lists the script.

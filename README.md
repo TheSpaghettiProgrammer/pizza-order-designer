@@ -66,6 +66,12 @@ npm --prefix client run test:e2e
 UI end-to-end tests (Playwright, with a mocked API). First time only:
 `npx --prefix client playwright install chromium`.
 
+```bash
+bash scripts/smoke-compose.sh
+```
+A smoke test of the **running Docker stack** through nginx: health, menu, the $31.23 quote, a submit
+whose `Location` header can be followed, and a same-key retry. Run it after `docker compose up --build -d`.
+
 ## Order service API (short)
 
 Full contract with request and response examples: **[docs/API.md](docs/API.md)**. Runnable requests are in
