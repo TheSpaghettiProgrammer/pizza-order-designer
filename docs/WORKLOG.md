@@ -185,6 +185,21 @@ into reviewable stories and open questions. **No feature code yet.** The user re
      need adjusting. The agent definitions load at session start, so a new session (or restart) may be
      needed before they can be invoked by name.
 
+7. **Feature-branch workflow** (D-033, supersedes D-032). The user doesn't want direct pushes to `main`;
+   everything goes through feature branch → PR → review → merge.
+   - Checked GitHub enforcement: branch protection and rulesets → **HTTP 403** (private repo on the free
+     plan). Added a committed **`.githooks/pre-push`** hook that rejects pushes to `refs/heads/main`,
+     and **`.gitattributes`** (`* text=auto`, LF for hooks).
+   - Tested the hook directly: push to main → exit 1 with a message; push of a feature branch → exit 0;
+     mixed push including main → exit 1. `git add --renormalize .` changed no existing files.
+   - Updated `docs/SUBAGENTS.md` (branches, PRs, merging; step 10; small changes still need a PR),
+     `CLAUDE.md`, and the README ("Contributing workflow").
+   - **This change is the first one delivered as a PR** (branch `chore/feature-branch-workflow`). The
+     first four commits went straight to `main` before the rule existed.
+
 ### Open items
 - **User review of the backlog**, and answers to the M0 questions (#1–#7), before any feature work.
 - User review of `docs/SUBAGENTS.md` and the agent definitions.
+- Merge the `chore/feature-branch-workflow` PR. Then activate the hook in this clone
+  (`git config core.hooksPath .githooks`) and decide the repo merge settings (merge commits only? delete
+  branch on merge?).
