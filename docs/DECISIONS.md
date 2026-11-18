@@ -39,13 +39,13 @@ or **Open** (decided provisionally, revisit later).
 | D-031 | 2026-11-17 | One plan file per story in `docs/plans/`, the single artifact every role writes to | Accepted |
 | D-032 | 2026-11-17 | Branch per story (`story/<N>-<slug>`), PR with `Closes #N`, user merges | Superseded by D-033 |
 | D-033 | 2026-11-17 | No direct pushes to `main`: every change goes through a feature branch + PR the user merges, enforced by a pre-push hook | Accepted |
-| D-034 | 2026-11-17 | Scope: full kiosk vision (start screen, simulated payment, kitchen view) in scope; required path still built first (#1) | Accepted |
-| D-035 | 2026-11-17 | Pricing math: tax after discount, tip untaxed, round half-up, tax rounded once per order, tip % on pre-tax total (configurable) (#2) | Accepted |
-| D-036 | 2026-11-17 | Pricing runs on the server only; the UI shows server quotes; submit re-prices and rejects a mismatch (#3) | Accepted |
-| D-037 | 2026-11-17 | Cancel deletes the order; idempotency records outlive orders; status flow is linear (#4) | Accepted |
-| D-038 | 2026-11-17 | A simulated payment step is in scope (no real payments) (#5) | Accepted |
-| D-039 | 2026-11-17 | Kitchen: an advance endpoint plus an optional auto-advance timer (#6) | Accepted |
-| D-040 | 2026-11-17 | Validation limits; an ineligible SAVE5 is rejected with a message (#7) | Accepted |
+| D-037 | 2026-11-17 | Scope: full kiosk vision (start screen, simulated payment, kitchen view) in scope; required path still built first (#1) | Accepted |
+| D-038 | 2026-11-17 | Pricing math: tax after discount, tip untaxed, round half-up, tax rounded once per order, tip % on pre-tax total (configurable) (#2) | Accepted |
+| D-039 | 2026-11-17 | Pricing runs on the server only; the UI shows server quotes; submit re-prices and rejects a mismatch (#3) | Accepted |
+| D-040 | 2026-11-17 | Cancel deletes the order; idempotency records outlive orders; status flow is linear (#4) | Accepted |
+| D-041 | 2026-11-17 | A simulated payment step is in scope (no real payments) (#5) | Accepted |
+| D-042 | 2026-11-17 | Kitchen: an advance endpoint plus an optional auto-advance timer (#6) | Accepted |
+| D-043 | 2026-11-17 | Validation limits; an ineligible SAVE5 is rejected with a message (#7) | Accepted |
 
 ---
 
@@ -340,7 +340,7 @@ no force push). That's worth it if the repo is made public for the submission.
 
 Each of these becomes a line in the README **Assumptions** section (#37).
 
-### D-034 — Scope: full kiosk vision (#1)
+### D-037 — Scope: full kiosk vision (#1)
 **Decision (the user's, against the recommendation):** The full self-order kiosk experience is in scope:
 a start screen (#25), a simulated payment step (#29) and a kitchen view (#33), on top of everything
 the assignment requires. Those three stories move from `P2-stretch` to `P1-should`.
@@ -349,7 +349,7 @@ README) still comes first, so a working, graded submission exists at every point
 **Trade-off:** this is well beyond the brief's 3-hour timebox. The README will report the real time
 spent and explain the larger scope as a deliberate choice. Recommended was P0 → P1 → P2-if-time.
 
-### D-035 — Pricing math and rounding (#2)
+### D-038 — Pricing math and rounding (#2)
 **Decision:** Accepted after research into real POS and tax practice (sources in WORKLOG session 3):
 
 | Rule | Decision | Basis |
@@ -380,7 +380,7 @@ total        = taxable + tax + tip
 tax" wherever it means a pre-tax amount and uses "bill" only here. We follow industry practice (pre-tax)
 and keep the base switchable.
 
-### D-036 — Pricing runs on the server only (#3)
+### D-039 — Pricing runs on the server only (#3)
 **Decision:** The order service is the single source of truth. The UI calls `POST /api/orders/quote` on
 every change (debounced) and only **displays** server-computed money; it never does money arithmetic.
 On submit, the client sends the total it displayed. The server re-prices, and if the result differs it
@@ -388,7 +388,7 @@ returns **409 Price changed** with the new breakdown for the customer to confirm
 **Why:** One implementation can't drift. It directly satisfies "the total the customer sees … must match
 the total the restaurant charges".
 
-### D-037 — Cancel deletes the order; idempotency outlives orders (#4)
+### D-040 — Cancel deletes the order; idempotency outlives orders (#4)
 **Decision (the user's, against the recommendation):** Cancelling an order (allowed only while Not
 Started) **deletes** it: `DELETE /api/orders/{id}` returns **204**. Afterwards, `GET` returns **404** and
 a repeated `DELETE` returns **404**. The UI treats a 404 on a cancel retry as "already cancelled".
@@ -404,7 +404,7 @@ skipping, no going back.
 **Recommended was** a terminal `Cancelled` status, which keeps history and makes a repeated cancel
 idempotent. The README notes the trade-off.
 
-### D-038 — Simulated payment in scope (#5)
+### D-041 — Simulated payment in scope (#5)
 **Decision (the user's):** The kiosk flow includes a **clearly labelled simulated** payment step. No real
 card data, no payment provider (the brief forbids real payments). A decline path demonstrates the error
 handling. #29 moves to `P1-should`.
@@ -412,13 +412,13 @@ handling. #29 moves to `P1-should`.
 an update while Not Started shows a simulated charge or refund for the difference; a cancel (delete)
 shows "payment voided (simulated)".
 
-### D-039 — Kitchen simulation (#6)
+### D-042 — Kitchen simulation (#6)
 **Decision:** `POST /api/kitchen/orders/{id}/advance` moves an order to its next status. It's
 deterministic and is what tests and demos use. Optionally, a background auto-advance timer runs behind
 `Kitchen:AutoAdvance:Enabled` (off by default; on in docker-compose for demos) with a configurable
 interval. Both go through the same transition rules (#20). A kitchen view (#33) calls the same endpoint.
 
-### D-040 — Validation limits and SAVE5 eligibility (#7)
+### D-043 — Validation limits and SAVE5 eligibility (#7)
 **Decision:** The recommended limits:
 
 | Input | Rule |

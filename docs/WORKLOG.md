@@ -218,13 +218,13 @@ into reviewable stories and open questions. **No feature code yet.** The user re
 
 ---
 
-## 2026-11-17 — Session 3: M0 decisions (planning)
+## 2026-11-17 — Session 4: M0 decisions (main session)
 
 **Context:** The user is running a **second chat** for the UI and Playwright tests. This chat takes the
 backend side: decisions first, then the pricing core (M1) and the order service (M2). The two chats
 should coordinate on the API contract and must not share a working tree (use a separate worktree).
 
-### Decisions taken (D-034 to D-040)
+### Decisions taken (D-037 to D-043)
 | Question | Answer | Matches recommendation? |
 |---|---|---|
 | #1 Scope | **Full kiosk vision** (#25, #29, #33 → P1) | No: recommended P0 → P1 → P2-if-time |
@@ -272,7 +272,18 @@ should coordinate on the API contract and must not share a working tree (use a s
 - **Board check:** the closed questions #1–#7 moved to **Done** automatically. #25 was already **In
   Progress**, set by the UI chat, not this one.
 
+### Collision with the UI session (PR #42) and renumbering
+- PR #42 (`chore/41-playwright-e2e`, from the UI session) had already claimed **D-034 to D-036** and a
+  "Session 3" heading. This session's decisions were renumbered **D-034…D-040 → D-037…D-043**, with a
+  single-pass regex so nothing was replaced twice. This section became "Session 4".
+- The same renumbering was applied on GitHub: the decision comments on #1–#7 (edited in place) and the
+  13 annotated or rewritten story bodies. Spot-checked #4 and #19.
+- **Ownership overlap:** PR #42's D-035 plans "#41 → #25 → **#8** → #26" in the UI session, while this
+  session intended to start the backend with #8. The user needs to decide who owns #8.
+- **Process lesson for parallel sessions:** decision IDs and session numbers are claimed when a PR
+  merges, not when it's written. Whichever PR merges second renumbers its entries.
+
 ### Open items
-- Plan the first M1 story (#8, the data-driven menu) through the subagent workflow, and publish the
-  menu and quote API contract early for the UI chat.
+- **Who owns #8** (the data-driven menu, backend)? Then plan the first backend story through the
+  subagent workflow, and publish the menu and quote API contract early for the UI session.
 - #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.
