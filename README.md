@@ -124,6 +124,14 @@ Each one is recorded with its reasoning in [docs/DECISIONS.md](docs/DECISIONS.md
 - Limits: 1–25 lines per order; quantity 1–20; no duplicate topping on one pizza; tip $0–$500 or 0–100%,
   at most 2 decimals.
 
+**Order description (Requirement 3):**
+- The server writes it from the menu's display names, so the quote, the placed order and the
+  confirmation all read the same. "Describe my order" in the UI shows it.
+- One line per order line, in order: quantity × size, then the toppings, comma-separated, e.g.
+  `2 × Large pizza — Pepperoni, Bacon`. With no toppings it says `1 × Small pizza — no toppings`.
+- Identical lines aren't merged: two separate "1 × Large" lines stay two lines.
+- Prices aren't part of the description. They're in the price breakdown shown next to it.
+
 **Lifecycle (D-040, D-047):**
 - The statuses are exactly Not Started → Started → Ready for Pickup → Delivered: linear, no skipping, no
   going back.
