@@ -197,9 +197,20 @@ into reviewable stories and open questions. **No feature code yet.** The user re
    - **This change is the first one delivered as a PR** (branch `chore/feature-branch-workflow`). The
      first four commits went straight to `main` before the rule existed.
 
+8. **PR #39 merged** by the user (merge commit `9dfda75`; the user deleted the branch).
+   - Synced local `main` (`git pull --ff-only --prune`) and deleted the local branch.
+   - **Activated the hook** in this clone with `git config core.hooksPath .githooks`.
+   - **Verified it:** the first dry-run push to `main` showed nothing, because `main` was up to date,
+     so git had nothing to push and skipped the hook. Retried with a dangling probe commit
+     (`git commit-tree`, on no branch) and dry-ran `push origin <probe>:refs/heads/main` → **rejected
+     by pre-push**. A dry-run push to a new feature branch name was allowed. `main` was unchanged.
+   - **Repo merge settings** (the user approved): merge commits only (squash and rebase disabled),
+     auto-delete head branches on merge. Confirmed by the API response.
+   - The user asked why the branch was called `chore/`: it's the Conventional Commits type for
+     tooling and process changes that don't alter app behaviour. Offered to switch to another scheme;
+     no change requested so far.
+   - This log entry is itself delivered through a PR (`docs/merge-settings-and-hook`).
+
 ### Open items
 - **User review of the backlog**, and answers to the M0 questions (#1–#7), before any feature work.
 - User review of `docs/SUBAGENTS.md` and the agent definitions.
-- Merge the `chore/feature-branch-workflow` PR. Then activate the hook in this clone
-  (`git config core.hooksPath .githooks`) and decide the repo merge settings (merge commits only? delete
-  branch on merge?).

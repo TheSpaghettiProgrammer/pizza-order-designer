@@ -45,7 +45,8 @@ This is a job-interview take-home. The user wants **every action and decision tr
   M4 Quality & deliverables.
 - **Never push or commit to `main`.** Every change (code, docs, process) goes through a feature branch
   (`story/<N>-<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`) → `gh pr create --base main` → the
-  user reviews and merges (merge commit, branch deleted). Then `git switch main; git pull --ff-only`.
+  user reviews and merges. The repo only allows merge commits and auto-deletes merged branches. Then
+  `git switch main; git pull --ff-only --prune; git branch -d <branch>`.
   A committed `.githooks/pre-push` hook enforces this (`git config core.hooksPath .githooks`). Never
   bypass it.
 - Small, meaningful commits that reference issues (`Refs #N`, `Closes #N`). Commit history is graded.

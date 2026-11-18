@@ -321,3 +321,8 @@ straight to `main` before this rule existed. Everything after goes through PRs, 
 change (`chore/feature-branch-workflow`).
 **Alternatives:** GitHub Pro, or a public repo, would allow real server-side protection (required PR,
 no force push). That's worth it if the repo is made public for the submission.
+**Applied (2026-11-17, after PR #39 merged, approved by the user):**
+- Repo settings: `allow_merge_commit=true`, `allow_squash_merge=false`, `allow_rebase_merge=false`,
+  `delete_branch_on_merge=true`. Merge commits are the only option, and head branches are deleted
+  automatically.
+- `core.hooksPath=.githooks` is set in the main working clone.
