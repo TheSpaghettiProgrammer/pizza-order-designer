@@ -676,3 +676,12 @@ this correction.
 
 **#31 note:** the user stopped the edit-UI work partway through. The local code and its one unpushed
 commit were discarded. The story stays open as a documented next step.
+
+- **Brief coverage check (Session 11, cont.):** the user asked whether every brief question was answered.
+  The README was mapped item by item against the brief: every deliverable and all four design-write-up
+  questions are covered, and requirements 1–6 work. Editing a placed order is API-only, as documented
+  (#31 stays open).
+  - **One gap found:** the Assumptions didn't mention Requirement 3's order description. Added an
+    "Order description" subsection: built server-side from menu names, one line per order line
+    (`2 × Large pizza — Pepperoni, Bacon`, or "no toppings"), identical lines not merged, and no
+    prices. Checked against `OrderPricer`/`OrderDescription`.
