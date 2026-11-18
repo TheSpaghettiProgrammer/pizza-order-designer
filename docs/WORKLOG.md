@@ -559,3 +559,31 @@ real API, including a new "server stored it, response lost" mode.
 **Mutation check:** forgetting the key after an unclear failure fails 2 specs.
 
 **Checks:** typecheck, ESLint and Prettier ✅; Vitest **42/42**; Playwright **29/29**.
+
+---
+
+## 2026-11-17 — Session 8: PR D, README deliverables (#37)
+
+The README was rewritten to answer every deliverable in the brief:
+- run instructions (Docker and local), and the three test commands,
+- the API summary with curl examples (full contract in `docs/API.md`),
+- the **Assumptions** list (pricing, validation, lifecycle, kiosk),
+- the **design write-up** (money and where pricing runs; extensibility; idempotent retries and the
+  cancel-vs-start race),
+- the invariants tested, with the mutation-check results, and what isn't covered,
+- the cut list,
+- the **AI usage note**,
+- an honest time-spent account.
+
+**Verified before writing "it runs":** rebuilt the full compose stack from the final code (PRs A, B and C)
+and drove it through nginx on :8080:
+- health and the SPA deep link,
+- the menu,
+- quote $31.23,
+- submit → 201 with an ETag,
+- retry with the same key → 200 with the same id,
+- the auto-advance timer → Started after about 45 s,
+- cancel after start → 409.
+
+A first scripted attempt sent malformed JSON (my PowerShell `TrimEnd('}')` stripped every closing brace).
+The server correctly answered 400. Fixed in the script, not the app.
