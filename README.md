@@ -268,7 +268,9 @@ independent **code review** on opus, and UI implementation on sonnet. **My part:
 - reviewing and merging every PR.
 
 Every decision is logged with who made it in [docs/DECISIONS.md](docs/DECISIONS.md), and the step-by-step
-history is in [docs/WORKLOG.md](docs/WORKLOG.md).
+history is in [docs/WORKLOG.md](docs/WORKLOG.md). **[docs/HUMAN-CONTRIBUTIONS.md](docs/HUMAN-CONTRIBUTIONS.md)**
+lists, with evidence, what the human did: decisions, course corrections, independent checks, and
+verification.
 
 **AI output that was rejected or fixed.** Claude's first concurrency test for "cancel vs kitchen start"
 fired both HTTP requests in parallel, and it passed. When Claude logged which side won, the cancel had won
