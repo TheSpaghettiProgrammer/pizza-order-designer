@@ -362,3 +362,46 @@ settles #8's ownership: the order from D-035 (#41 → #25 → #8 → #26) now ru
 - `fix/` branch: make `lint:check` really check formatting (CRLF / `endOfLine`).
 - Publish the menu and quote API contract when #8 and #14 are planned.
 - #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.
+
+---
+
+## 2026-11-17 — Session 5: PR A, pricing core (#8–#14, #34)
+
+**Context:** the user's process review (21:13). It approved #25 at Gate 1, set up D-046 (4 batched PRs,
+slim process, cut list; supersedes D-030 and D-037), and asked for the API contract first. PR A was
+built in its own worktree (`.claude/worktrees/pricing-core`, branch `story/8-14-pricing-core`) while the
+#25 developer and reviewer subagents ran in the main checkout.
+
+**Done (one commit per story):**
+- **#9** `Money.RoundToCents`: half-up, explicit `AwayFromZero`. A test documents that `Math.Round(0.125m, 2)`
+  gives 0.12.
+- **#8** menu entities and `MenuSeed`, which is the single source for the EF seed and for the tests. The
+  `InitialMenu` migration, an immutable case-insensitive `MenuSnapshot`, and `GET /api/menu` with per-size
+  topping prices. **Verified against Postgres:** the migration applied on startup and the endpoint served
+  the seeded data.
+- **#11** promotion engine: `IPromotionRule` types in code, promo rows as data, conflicts through
+  exclusion groups, the discount capped at the subtotal. A test adds SAVE10 and TUESDAY as data only.
+- **#13** description builder. **#10/#12** `OrderPricer`, which implements the D-038 formula, the D-043
+  limits with per-field messages, and both tip bases.
+- **#14** `POST /api/orders/quote`: 400 ProblemDetails with `code`, `traceId` and field errors.
+  `docs/API.md` (the full contract, including the order and kitchen endpoints for PR B) and `.http`
+  examples.
+- **#34** invariant tests: 500 seeded random orders × 2 tip bases. Every amount is whole cents, the parts
+  sum to the total, the discount stays in [0, subtotal], tax is computed after the discount, and pricing
+  is deterministic. Also line-order independence and the SAVE5 boundary.
+
+**Verification:** `dotnet build` with 0 warnings; **`dotnet test` 70/70**.
+- **Mutation check (done by hand, for the AI note):** changing the tax to apply before the discount made
+  **5 tests fail**: both invariant runs, the worked example, tax-after-discount, and the HTTP quote test.
+  Restored afterwards.
+- **Found while testing:** a zero `decimal` literal serialized as `0`, not `0.00`. Fixed with `0.00m`, and
+  a test asserts it.
+- **Docker gotcha:** `docker compose up db` from a worktree starts a *new* compose project (named after the
+  folder), and it clashed on :5432. Removed it and used the existing `pizzaorderdesigner-db-1`.
+
+**Process docs (D-046):** D-030 and D-037 marked superseded. `CLAUDE.md` "Process" section rewritten, and
+`SUBAGENTS.md` §0 "Current process" added (the four-role sections are kept as history).
+
+### Open items
+- PR B (order service): short plan first. PR C (UI). PR D (README).
+- `fix/` branch for `lint:check` (CRLF): still open.

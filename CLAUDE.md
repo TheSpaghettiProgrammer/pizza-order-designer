@@ -56,12 +56,20 @@ This is a job-interview take-home. The user wants **every action and decision tr
   anything that depends on an unanswered question without flagging it.
 - The brief is in `docs/ASSIGNMENT.md`. 3-hour timebox: prioritize P0, keep a cut list.
 
-## Subagents
-- Follow **`docs/SUBAGENTS.md`** for every story: `pizza-planner` → `pizza-plan-reviewer` → **user
-  approves the plan** → `pizza-developer` → `pizza-reviewer` → orchestrator opens the PR → **user
-  merges**.
-- Agent definitions are in `.claude/agents/`. Each story has a plan file `docs/plans/<N>-<slug>.md`
-  (from `_TEMPLATE.md`) where every role writes only its own section.
-- Brief every subagent with the 6-part template in `docs/SUBAGENTS.md` §5. Subagents start cold.
-- Only the orchestrator (main session) pushes, opens PRs, touches GitHub issues, or edits
-  `DECISIONS.md`/`WORKLOG.md`. Re-run the checks yourself before reporting a subagent's result.
+## Process (D-046, supersedes the four-role workflow D-030)
+- **4 batched PRs:**
+  - A (pricing #8–#14, #34)
+  - B (order service #15–#22, #35)
+  - C (UI #26–#28, #30–#32)
+  - D (README #37)
+
+  One commit per story. Issues are closed from the PR body (`Closes #N`); commits say `Refs #N`.
+- The main session implements A and C directly. B gets one short plan (≤ ~150 lines). One reviewer
+  subagent pass per PR (opus). The main session re-runs the checks itself. One user approval per PR.
+  Use sonnet for developer and UI subagents.
+- **Cut list** (README): #44, #29, #33, #23, #24 (unless free), #36, #38. Cut C before B if time runs short.
+- **Tracking:** 2–3 line D-xxx entries (only the main session assigns numbers), one WORKLOG entry per
+  PR, and docs/decision updates ride inside the feature PR.
+- Subagent briefing template, checks and the Never list are in `docs/SUBAGENTS.md`. The `pizza-*`
+  definitions in `.claude/agents/` are run as general-purpose agents with that file as their contract
+  when the types aren't registered.
