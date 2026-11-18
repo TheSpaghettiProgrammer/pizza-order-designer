@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using PizzaOrderDesigner.Api.Menu;
+using PizzaOrderDesigner.Api.Orders;
 using PizzaOrderDesigner.Api.Pricing;
 using PizzaOrderDesigner.Api.Pricing.Promotions;
 using PizzaOrderDesigner.Data;
@@ -18,6 +19,10 @@ builder.Services.AddSingleton<IPromotionRule, PercentOffOrderRule>();
 builder.Services.AddSingleton<IPromotionRule, AmountOffOverThresholdRule>();
 builder.Services.AddSingleton<PromotionEngine>();
 builder.Services.AddSingleton<OrderPricer>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<OrderService>();
+builder.Services.Configure<KitchenAutoAdvanceOptions>(builder.Configuration.GetSection(KitchenAutoAdvanceOptions.SectionName));
+builder.Services.AddHostedService<KitchenAutoAdvanceService>();
 builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = context =>
 {
     // Unhandled exceptions (#22): a friendly message and the traceId for support. The exception handler middleware
