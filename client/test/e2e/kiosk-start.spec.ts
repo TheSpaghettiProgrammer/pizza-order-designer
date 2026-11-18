@@ -61,6 +61,13 @@ test('declining the Cancel order confirmation keeps the order', async ({ page })
   await expect(dialog(page)).toBeHidden();
   await expect(page).toHaveURL('/order');
 
+  // Focus starts on "Keep my order" (D-044), so a stray Enter keeps the order.
+  await cancelButton(page).click();
+  await expect(keepButton(page)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(dialog(page)).toBeHidden();
+  await expect(page).toHaveURL('/order');
+
   await page.reload();
   await expect(page).toHaveURL('/order');
 });
