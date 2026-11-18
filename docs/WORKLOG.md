@@ -218,6 +218,61 @@ into reviewable stories and open questions. **No feature code yet.** The user re
 
 ---
 
+## 2026-11-17 — Session 3: Playwright E2E harness (secondary session)
+
+**Context:** a second Claude Code session that runs alongside the main one and acts as orchestrator
+for its own branches. The user asked for the first steps toward a basic, usable order screen, with
+Playwright for UI tests.
+
+### Decisions
+- **D-034:** Playwright E2E for UI behaviour; Vitest stays for unit tests.
+- **D-035:** order of work: #41 (harness) → #25 (start screen and draft store) → #8 → #26.
+- **D-036:** this session works in its own worktree, `.claude/worktrees/41-playwright-e2e`, because the
+  main session uses the shared checkout. Found while syncing: the main session had already merged #39
+  and #40, switched the shared checkout to `main`, and deleted the old branch.
+
+### Done
+1. **Story selection:** read #25, #26, #27, #36, #8 and #14. #25 is the only UI story with no backend
+   or M0 dependency. The user chose #25 first, Playwright E2E alongside Vitest, and a separate chore PR
+   for the harness.
+2. **Issue #41**, "Playwright E2E test harness for the order builder UI" (P1-should, area:testing,
+   area:frontend, M4). Added to the board as In Progress, with Priority P1.
+3. **Branch `chore/41-playwright-e2e`** in a worktree from `origin/main` (`990172d`). Unset its
+   upstream, which `git worktree add` had set to `origin/main`.
+4. **Harness:** the small-change path (no planner or reviewer subagents), because this is tooling with
+   no app behaviour. It still goes through a PR.
+   - `npm ci`, then `npm install -D -E @playwright/test@1.65.1` (latest, released 2026-11-13), then
+     `npx playwright install chromium`.
+   - `client/playwright.config.ts`: testDir `test/e2e`, Chromium project, its own `quasar dev
+     --port 9100` through `webServer` (D-034 explains the dedicated port), and CI-aware retries,
+     workers and `forbidOnly`.
+   - `client/test/e2e/smoke.spec.ts`: the app shell shows the title in the header; an unknown deep link
+     shows the 404 page, and Go Home returns to `/`.
+   - Scripts `test:e2e` and `test:e2e:ui`. Playwright output is git-ignored and in `.dockerignore`.
+     README test instructions updated.
+
+### Verification
+- `npm run test:e2e` → **2 passed** (5.5 s, starting the dev server itself on :9100).
+- **Negative check:** temporarily changed the 404 text the spec expects → **1 failed** (`element(s)
+  not found`), then reverted. So the spec really checks the page.
+- `npm test` (Vitest) → 1/1. `npm run typecheck` → clean (vue-tsc also covers the new `.ts` files).
+  ESLint on `src`, `playwright.config.ts` and `test/e2e` → clean. `prettier --check` on the new and
+  changed files → clean. `npx quasar build` → OK.
+
+### Problems found (not fixed here: one concern per branch)
+- **`lint:check` can never fail on formatting.** It runs `prettier "<glob>"` without `--check`, which
+  only prints the formatted files and exits 0. With `--check`, 25 existing files "fail", and every one
+  of them is **CRLF line endings** from the Windows checkout (`* text=auto`), since Prettier defaults to
+  `endOfLine: lf`. With `--end-of-line auto` they all pass. A fix would add `--check` and either set
+  `endOfLine: auto` or force LF for `client/` in `.gitattributes`. Proposed as a follow-up `fix/` branch.
+
+### Open items
+- PR for #41: the user reviews and merges.
+- Then #25: story branch, plan file, `pizza-planner` → `pizza-plan-reviewer` → Gate 1.
+- Follow-up: the `lint:check` / line-endings fix above.
+
+---
+
 ## 2026-11-17 — Session 4: M0 decisions (main session)
 
 **Context:** The user is running a **second chat** for the UI and Playwright tests. This chat takes the
@@ -283,7 +338,27 @@ should coordinate on the API contract and must not share a working tree (use a s
 - **Process lesson for parallel sessions:** decision IDs and session numbers are claimed when a PR
   merges, not when it's written. Whichever PR merges second renumbers its entries.
 
+### Absorbing the UI session (the user's decision: one driver)
+The user decided **this session is the single driver** and absorbs the UI session's work. That also
+settles #8's ownership: the order from D-035 (#41 → #25 → #8 → #26) now runs here.
+- **Handed over:** PR #42 (`chore/41-playwright-e2e`, closes #41), and branch
+  `story/25-kiosk-start-screen` stacked on it (commit `623ea31`: #25 plan round 1, with the reviewer's
+  round 1 REVISE, plus handoff notes). Everything was already pushed, so no code had to be copied.
+- **Re-verified #42 independently** in its worktree: `vue-tsc` clean; ESLint (src, test, playwright
+  config) clean; Vitest 1/1; **Playwright 2/2**. `prettier --check` fails on 25 files, which is the known
+  CRLF line-ending issue, pre-existing on `main`.
+- **#25 answers from the user:** the idle timeout (AC 4) becomes a **separate follow-up story, #44**
+  (P1, M3, depends on #25). Both planner defaults are kept: Cancel order always confirms, and `/`
+  redirects to `/order` while an order is open. Reviewer Major 2 (promo field) is settled by D-043:
+  one promo code per order, so a single `promoCode` field.
+- **#42/#43 conflicts resolved in advance:** merged `origin/chore/41-playwright-e2e` into
+  `docs/m0-decisions` and kept both sides of each conflict, in number order. Decisions table D-034–D-036
+  then D-037–D-043; their sections before the "M0 decisions" block; WORKLOG Session 3 then Session 4.
+  **Merge order: #42 first, then #43.** #43 then shows only its own changes.
+
 ### Open items
-- **Who owns #8** (the data-driven menu, backend)? Then plan the first backend story through the
-  subagent workflow, and publish the menu and quote API contract early for the UI session.
+- Merge #42, then #43. Then merge `main` into `story/25-kiosk-start-screen`, remove the old worktree
+  `.claude/worktrees/41-playwright-e2e`, and run #25 planner round 2 → re-review → Gate 1.
+- `fix/` branch: make `lint:check` really check formatting (CRLF / `endOfLine`).
+- Publish the menu and quote API contract when #8 and #14 are planned.
 - #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.
