@@ -78,7 +78,7 @@ public sealed class OrderPricer(PromotionEngine promotions, IOptions<PricingOpti
         var tax = Money.RoundToCents(taxable * settings.TaxRate);
         var tipAmount = tip switch
         {
-            null => 0m,
+            null => 0.00m, // scale 2, so it serializes as 0.00 like every other amount
             { IsPercent: false } => tip.Value,
             _ => Money.RoundToCents((settings.TipBase == TipBase.PostTax ? taxable + tax : taxable) * tip.Value / 100m),
         };

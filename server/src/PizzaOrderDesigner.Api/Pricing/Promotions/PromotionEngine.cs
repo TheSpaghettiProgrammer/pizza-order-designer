@@ -5,7 +5,7 @@ public sealed record AppliedPromotion(string Code, decimal Discount);
 /// <summary>Either the applied promotions and the total discount, or a customer-facing reason they can't apply.</summary>
 public sealed record PromotionResult(IReadOnlyList<AppliedPromotion> Applied, decimal Discount, string? Error)
 {
-    public static readonly PromotionResult None = new([], 0m, null);
+    public static readonly PromotionResult None = new([], 0.00m, null);
 
     public bool IsValid => Error is null;
 }
