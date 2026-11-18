@@ -840,10 +840,34 @@ UI exit, but that stays on the branch and no step 2 spec needs it.
 ## 3. Implementation notes  *(pizza-developer)*
 
 ### Round 1
-- **Commits:** `<sha> <subject>`, …
-- **Deviations from the plan, and why:** …
-- **Checks run:** command → result
-- **Follow-ups / proposed decisions:** …
+Implemented plan Round 2, steps 1-4, with review round 2's four Minors folded in.
+- **Commits:**
+  - `bc23063` Add draft-order store with sessionStorage persistence
+  - `6ff4a2c` Add kiosk start screen, order page and draft route guard
+  - `72e23f2` Add Cancel order with confirmation to the order builder
+  - `447ec2b` Cover tablet touch targets in kiosk E2E
+- **Deviations from the plan, and why:**
+  - Optional E8 (throwing `window.sessionStorage` getter in the browser) was **dropped**: it timed out
+    because the page never rendered Start order with the getter throwing, so it wasn't green first time. U4 and
+    U10 cover the same behaviour at unit level. The step 4 commit subject is shortened accordingly ("Cover
+    tablet touch targets in kiosk E2E"). I did not investigate which code probes `sessionStorage`.
+  - The unit tests are 31 tests across 3 files (persistence, store, guard) (some `it.each` tables), and the E2E suite is 8 kiosk specs
+    (E1-E7 and E9; E1's Cancel part and E2/E3 are separate `test`s) plus the 2 smoke specs. The wording and
+    grouping of the E2E tests differs slightly from the table (e.g. E4 seeds a draft after Start order).
+  - `parseStoredDraft` builds the result directly rather than via `createEmptyDraft()` (same shape).
+  - `routes.ts` carries the `RouteMeta` augmentation, as planned. The 404 stays outside `MainLayout`.
+- **Minors folded in:** M1 (methods called on the persistence object, parsed storage typed `unknown`, no
+  destructuring), M2 (Start order asserted >= 96 px, Cancel >= 48 px), M3 (n/a, E8 dropped), M4 (the fake
+  `Storage` is a complete object literal, no cast).
+- **Checks run** (from `client/`, after each step; final state below):
+  - `npx prettier --check --end-of-line auto <changed files>` -> clean
+  - `npx eslint -c ./eslint.config.js "./src*/**/*.{ts,js,cjs,mjs,vue}" test/e2e test/vitest` -> exit 0
+  - `npm run typecheck` -> clean
+  - `npm test` -> 3 files, 31 tests passed
+  - `npm run test:e2e` -> 10 passed (8 kiosk + 2 smoke)
+  - `npx quasar build` -> succeeded
+- **Follow-ups / proposed decisions:** none beyond D-044/D-045 as planned. `useDraftOrderStore(store)` is called
+  inside `beforeEach` (the Quasar `store` argument was defined). The orchestrator still owns the README lines.
 
 ---
 
