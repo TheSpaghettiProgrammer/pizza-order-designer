@@ -27,6 +27,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__PizzaDb: Host=db;Port=5432;Database=${POSTGRES_DB:-pizza_order_designer};Username=${POSTGRES_USER:-pizza};Password=${POSTGRES_PASSWORD:-pizza_dev};Gss Encryption Mode=Disable
       Database__ApplyMigrationsOnStartup: "true"
+      # Kitchen simulation for demos (D-042): each order moves to its next status after ~20 s.
+      # The deterministic alternative is POST /api/kitchen/orders/{id}/advance.
+      Kitchen__AutoAdvance__Enabled: "true"
+      Kitchen__AutoAdvance__IntervalSeconds: "20"
     ports:
       - "5080:8080"
     depends_on:

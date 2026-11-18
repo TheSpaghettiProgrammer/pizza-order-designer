@@ -484,3 +484,42 @@ built in its own worktree (`.claude/worktrees/pricing-core`, branch `story/8-14-
 ### Open items
 - PR B (order service): short plan first. PR C (UI). PR D (README).
 - `fix/` branch for `lint:check` (CRLF): still open.
+
+---
+
+## 2026-11-17 — Session 6: PR B, order service (#15–#22, #35)
+
+**Plan:** `docs/plans/pr-b-order-service.md` (about 95 lines, the one planning pass D-046 allows). Built
+in its own worktree (`.claude/worktrees/order-service`), stacked on PR A.
+
+**Done (commits by story):**
+- **#15** orders, lines and idempotency records. The `AddOrders` migration uses `jsonb` for the priced
+  snapshot, `text[]` for toppings, a cascade delete, and `xmin` as the row version. Npgsql correctly
+  doesn't create an `xmin` column (checked in the generated SQL).
+- **#20** the `OrderStatusFlow` transition table. **#22** `OrderProblems` (stable codes and customer
+  wording) plus a friendly 500 handler, tested so no exception text or stack frames leak.
+- **#16–#19, #21** `OrderService` and its endpoints (D-047). Deviation: the kitchen advance returns 409
+  `order.status_changed` instead of retrying. The optional auto-advance timer is on in docker-compose.
+- **#35** Testcontainers integration tests (real Postgres): retries, 10 concurrent duplicates, key
+  reuse, a late retry after a cancel, a price mismatch, the ETag rules, cancel rules, and linear advance.
+
+**A finding worth keeping for the AI note:** the parallel-HTTP race test passed, but logging showed
+**cancel won 25/25 rounds**, so it never exercised "kitchen wins". A mutation (an unconditional DELETE)
+slipped past it. Fixed by adding **deterministic race tests** that hold one side's row lock in a
+transaction, prove the other side waits, then commit and assert it loses cleanly (both orderings).
+Mutation checks:
+- an unconditional DELETE now fails 2 tests,
+- removing the unique-violation replay fails the concurrency test,
+- **a known gap:** removing the status check from the advance `WHERE` isn't caught. It only guards a
+  stale advance moving an order backwards, and forcing that interleaving needs hooks in the service.
+  Documented rather than tested.
+
+**Verification:** `dotnet test` **96/96** (about 8 s including the container).
+**Host smoke test against the dev DB:**
+- submit → 201 $31.23 with an ETag,
+- retry → 200 with the same id,
+- advance → Started,
+- cancel → 409 `order.already_started` with a traceId.
+
+### Open items
+- One reviewer pass on PR B. PR C (UI) and PR D (README).

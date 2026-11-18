@@ -3,10 +3,15 @@
 The contract between the order builder (Quasar UI) and the order service (.NET API). The UI calls
 relative `/api/...` only (D-011). The server is the single source of truth for money (D-039).
 
-**Status:**
-- **Implemented:** `GET /api/menu`, `POST /api/orders/quote` (#8, #14).
-- **Specified, built in the order-service PR (#15–#22):** `POST/GET/PUT/DELETE /api/orders…` and the
-  kitchen endpoint.
+**Status:** every endpoint below is implemented.
+- Menu and quote: #8, #14.
+- Orders and kitchen: #15–#22.
+
+Differences from the first draft of this contract:
+- `PUT` without `If-Match` returns **428** `order.precondition_required`.
+- A kitchen advance that lost a race to another change returns **409** `order.status_changed`.
+- Unexpected errors return **500** `server.error` with a `traceId`.
+- Malformed JSON returns **400** `request.invalid`.
 
 Runnable examples are in `server/src/PizzaOrderDesigner.Api/PizzaOrderDesigner.Api.http`.
 

@@ -52,6 +52,7 @@ or **Open** (decided provisionally, revisit later).
 | D-044 | 2026-11-17 | Kiosk flow: `/` start, `/order` builder, route guard, one shared exit path (#25) | Accepted |
 | D-045 | 2026-11-17 | Draft order in a Pinia store, persisted to sessionStorage (versioned, fail-safe) (#25) | Accepted |
 | D-046 | 2026-11-17 | Timebox reset: 4 batched PRs, slim process, scope cut list. Supersedes D-030, D-037 | Accepted |
+| D-047 | 2026-11-17 | Lifecycle guarantees: idempotency table + transaction, conditional SQL for cancel/advance, xmin for update | Accepted |
 
 ---
 
@@ -515,3 +516,16 @@ checks; one user approval per PR; sonnet for developer and UI work.
 endpoint plus curl is enough), #23 structured logging, #24 OpenAPI UI (unless free), #36 frontend
 component tests, #38 CI.
 **Budget order if time runs short:** cut C before B. The brief weights pricing and lifecycle over UI.
+
+### D-047 — How the order lifecycle guarantees are implemented (PR B)
+- **One order per Idempotency-Key:** the key is the primary key of `idempotency_records`, written in the
+  same transaction as the order. The loser of a concurrent duplicate replays the winner. A key whose
+  order was deleted returns 409 `order.cancelled`, so the order is never re-created.
+- **Cancel vs kitchen start:** each is one conditional statement (`DELETE/UPDATE … WHERE status =
+  'NotStarted'`), and Postgres row locks make the waiting statement re-check its `WHERE`. Exactly one
+  wins, as proven by the deterministic lock-holding tests.
+- **Updates** use `xmin` optimistic concurrency (ETag / If-Match).
+- **Advance doesn't retry** after losing a race: 409 `order.status_changed` (deviation from the plan,
+  which said "retry once"), so a stale request can never double-step.
+- *Alternatives:* `SELECT … FOR UPDATE` row locks, or serializable transactions. Both are heavier, with
+  no extra guarantee here.
