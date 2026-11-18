@@ -211,8 +211,9 @@ into reviewable stories and open questions. **No feature code yet.** The user re
      no change requested so far.
    - This log entry is itself delivered through a PR (`docs/merge-settings-and-hook`).
 
+9. **PR #40 merged.** Branch auto-deleted by GitHub (the first real test of the setting).
+
 ### Open items
-- **User review of the backlog**, and answers to the M0 questions (#1–#7), before any feature work.
 - User review of `docs/SUBAGENTS.md` and the agent definitions.
 
 ---
@@ -269,3 +270,95 @@ Playwright for UI tests.
 - PR for #41: the user reviews and merges.
 - Then #25: story branch, plan file, `pizza-planner` → `pizza-plan-reviewer` → Gate 1.
 - Follow-up: the `lint:check` / line-endings fix above.
+
+---
+
+## 2026-11-17 — Session 4: M0 decisions (main session)
+
+**Context:** The user is running a **second chat** for the UI and Playwright tests. This chat takes the
+backend side: decisions first, then the pricing core (M1) and the order service (M2). The two chats
+should coordinate on the API contract and must not share a working tree (use a separate worktree).
+
+### Decisions taken (D-037 to D-043)
+| Question | Answer | Matches recommendation? |
+|---|---|---|
+| #1 Scope | **Full kiosk vision** (#25, #29, #33 → P1) | No: recommended P0 → P1 → P2-if-time |
+| #2 Pricing math | Recommended rules after research; **tip % on the pre-tax total**, configurable | Mostly. The tip base changed from post-tax to pre-tax |
+| #3 Pricing location | Server only, quote API, 409 on a mismatch | Yes |
+| #4 Cancel | **Delete the order** | No: recommended a `Cancelled` status |
+| #5 Payment | **Simulated payment in scope** | No: recommended deferring it as P2 |
+| #6 Kitchen | Endpoint + optional timer | Yes |
+| #7 Validation | Recommended limits; reject an ineligible SAVE5 | Yes |
+
+### Research for #2 (the user asked how modern systems do it)
+- **Tip base:** Toast defaults to calculating tips **before tax** (it's configurable), and reportedly on
+  the pre-discount total. Square lets the merchant choose before or after tax, and its suggested tips
+  are calculated after discounts. So there's no single standard.
+  - The user asked whether "percentage of the total bill" really means after tax. Answer: it's
+    ambiguous. The brief qualifies every pre-tax amount with "before tax" and uses "bill" only here,
+    which leans post-tax, but industry practice leans pre-tax.
+  - The user chose **pre-tax, configurable**.
+- **Tax on discounts:** store-funded discounts reduce the taxable amount; manufacturer-reimbursed ones
+  don't. Rules vary by state. → Tax applies after the promo discount.
+- **Tips and sales tax:** voluntary tips generally aren't taxable; mandatory service charges are.
+  → The tip isn't taxed.
+- **Rounding:** the half-cent rule rounds up. States require invoice-level or line-level rounding, or
+  allow either; Texas and Florida require invoice-level. → Round half-up, and round tax once per order.
+  **.NET's `Math.Round` defaults to banker's rounding**, so `AwayFromZero` must be explicit. This is a
+  candidate for the README's "verified myself" AI note.
+- Sources:
+  [Toast tip before/after tax](https://support.toasttab.com/en/article/Calculate-tip-before-or-after-taxes),
+  [Toast community on discounts](https://community.toasttab.com/t5/restaurant-operations/how-can-i-make-toast-adjust-the-tip-amount-based-on-the-comped/m-p/16105),
+  [Square tips and tax](https://community.squareup.com/t5/Questions-How-To/Does-Square-calculate-tips-before-or-after-sales-tax/m-p/21890),
+  [Square tips after discounts](https://community.squareup.com/t5/Feature-Requests/Tips-Suggestions-based-on-total-bill-not-post-discounts/idc-p/799250/highlight/true),
+  [TaxJar discounts](https://www.taxjar.com/blog/calculations/2021-12-sales-tax-discounts-coupons-promotions),
+  [Minnesota RN 05-08](https://www.revenue.state.mn.us/sites/default/files/2011-11/RN_05-08.pdf),
+  [Sovos rounding](https://sovos.com/blog/sut/rounding-vs-the-sales-tax-bracket-system/),
+  [NY gratuities](https://www.tax.ny.gov/pubs_and_bulls/tg_bulletins/st/gratuities.htm),
+  [Microsoft Math.Round](https://learn.microsoft.com/el-gr/dotnet/api/system.math.round?view=net-5.0).
+
+### GitHub updates
+- Closed #1–#7, each with a comment linking its decision.
+- Updated the stories these decisions change. #19 (cancel → delete) and #20 (state machine) were
+  rewritten. A "Decision updates (M0)" section was added to #9, #10, #12, #14, #15, #16, #21, #25,
+  #29, #31 and #33.
+- Relabelled #25, #29, #33 from `P2-stretch` → `P1-should`, removed `needs-decision` from #29, and
+  synced the board's Priority field.
+- **Board check:** the closed questions #1–#7 moved to **Done** automatically. #25 was already **In
+  Progress**, set by the UI chat, not this one.
+
+### Collision with the UI session (PR #42) and renumbering
+- PR #42 (`chore/41-playwright-e2e`, from the UI session) had already claimed **D-034 to D-036** and a
+  "Session 3" heading. This session's decisions were renumbered **D-034…D-040 → D-037…D-043**, with a
+  single-pass regex so nothing was replaced twice. This section became "Session 4".
+- The same renumbering was applied on GitHub: the decision comments on #1–#7 (edited in place) and the
+  13 annotated or rewritten story bodies. Spot-checked #4 and #19.
+- **Ownership overlap:** PR #42's D-035 plans "#41 → #25 → **#8** → #26" in the UI session, while this
+  session intended to start the backend with #8. The user needs to decide who owns #8.
+- **Process lesson for parallel sessions:** decision IDs and session numbers are claimed when a PR
+  merges, not when it's written. Whichever PR merges second renumbers its entries.
+
+### Absorbing the UI session (the user's decision: one driver)
+The user decided **this session is the single driver** and absorbs the UI session's work. That also
+settles #8's ownership: the order from D-035 (#41 → #25 → #8 → #26) now runs here.
+- **Handed over:** PR #42 (`chore/41-playwright-e2e`, closes #41), and branch
+  `story/25-kiosk-start-screen` stacked on it (commit `623ea31`: #25 plan round 1, with the reviewer's
+  round 1 REVISE, plus handoff notes). Everything was already pushed, so no code had to be copied.
+- **Re-verified #42 independently** in its worktree: `vue-tsc` clean; ESLint (src, test, playwright
+  config) clean; Vitest 1/1; **Playwright 2/2**. `prettier --check` fails on 25 files, which is the known
+  CRLF line-ending issue, pre-existing on `main`.
+- **#25 answers from the user:** the idle timeout (AC 4) becomes a **separate follow-up story, #44**
+  (P1, M3, depends on #25). Both planner defaults are kept: Cancel order always confirms, and `/`
+  redirects to `/order` while an order is open. Reviewer Major 2 (promo field) is settled by D-043:
+  one promo code per order, so a single `promoCode` field.
+- **#42/#43 conflicts resolved in advance:** merged `origin/chore/41-playwright-e2e` into
+  `docs/m0-decisions` and kept both sides of each conflict, in number order. Decisions table D-034–D-036
+  then D-037–D-043; their sections before the "M0 decisions" block; WORKLOG Session 3 then Session 4.
+  **Merge order: #42 first, then #43.** #43 then shows only its own changes.
+
+### Open items
+- Merge #42, then #43. Then merge `main` into `story/25-kiosk-start-screen`, remove the old worktree
+  `.claude/worktrees/41-playwright-e2e`, and run #25 planner round 2 → re-review → Gate 1.
+- `fix/` branch: make `lint:check` really check formatting (CRLF / `endOfLine`).
+- Publish the menu and quote API contract when #8 and #14 are planned.
+- #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.

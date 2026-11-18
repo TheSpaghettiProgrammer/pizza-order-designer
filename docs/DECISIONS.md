@@ -42,6 +42,13 @@ or **Open** (decided provisionally, revisit later).
 | D-034 | 2026-11-17 | Playwright E2E for UI behaviour; Vitest stays for unit tests | Accepted |
 | D-035 | 2026-11-17 | First UI work: Playwright harness (#41), then #25, then #8 → #26 | Accepted |
 | D-036 | 2026-11-17 | A secondary session works in its own git worktree under `.claude/worktrees/` | Accepted |
+| D-037 | 2026-11-17 | Scope: full kiosk vision (start screen, simulated payment, kitchen view) in scope; required path still built first (#1) | Accepted |
+| D-038 | 2026-11-17 | Pricing math: tax after discount, tip untaxed, round half-up, tax rounded once per order, tip % on pre-tax total (configurable) (#2) | Accepted |
+| D-039 | 2026-11-17 | Pricing runs on the server only; the UI shows server quotes; submit re-prices and rejects a mismatch (#3) | Accepted |
+| D-040 | 2026-11-17 | Cancel deletes the order; idempotency records outlive orders; status flow is linear (#4) | Accepted |
+| D-041 | 2026-11-17 | A simulated payment step is in scope (no real payments) (#5) | Accepted |
+| D-042 | 2026-11-17 | Kitchen: an advance endpoint plus an optional auto-advance timer (#6) | Accepted |
+| D-043 | 2026-11-17 | Validation limits; an ineligible SAVE5 is rejected with a message (#7) | Accepted |
 
 ---
 
@@ -376,3 +383,102 @@ same `.git`, so the hook and config still apply.
 **Trade-off:** Each worktree needs its own `npm ci`, and the two sessions can still pick the same
 `D-xxx` number or both append to `WORKLOG.md`. Those conflicts are resolved when merging `main` into the
 branch. The PR says which session wrote it.
+
+---
+
+## M0 decisions (answers to questions #1–#7)
+
+Each of these becomes a line in the README **Assumptions** section (#37).
+
+### D-037 — Scope: full kiosk vision (#1)
+**Decision (the user's, against the recommendation):** The full self-order kiosk experience is in scope:
+a start screen (#25), a simulated payment step (#29) and a kitchen view (#33), on top of everything
+the assignment requires. Those three stories move from `P2-stretch` to `P1-should`.
+**Build order is unchanged:** the assignment's required path (pricing, lifecycle, invariant tests,
+README) still comes first, so a working, graded submission exists at every point.
+**Trade-off:** this is well beyond the brief's 3-hour timebox. The README will report the real time
+spent and explain the larger scope as a deliberate choice. Recommended was P0 → P1 → P2-if-time.
+
+### D-038 — Pricing math and rounding (#2)
+**Decision:** Accepted after research into real POS and tax practice (sources in WORKLOG session 4):
+
+| Rule | Decision | Basis |
+|---|---|---|
+| Rounding mode | Round half **up** (away from zero) to cents. Always pass `MidpointRounding.AwayFromZero`, because .NET's default `Math.Round` is banker's rounding (2.5 → 2). | The US sales-tax half-cent rule |
+| Topping price | `round(size.basePrice × category.rate)` per topping, per pizza | Menu prices are shown in cents |
+| Line total | unit price × quantity (already exact) | — |
+| Promo discount | Computed on the subtotal, rounded once, capped at the subtotal | The brief: "discount on the total order before tax" |
+| Tax | 6.5% of (subtotal − discount), **rounded once on the order total**, not per line | Store-funded discounts reduce the taxable amount; several states require invoice-level tax |
+| Tip | **Not taxed**, added after tax | Voluntary tips aren't subject to sales tax |
+| **Tip % base** | **Pre-tax, after discount:** `tip = round((subtotal − discount) × tip%)`. Configurable with `Pricing:TipBase` = `PreTax` (default) or `PostTax` (post-discount + tax, the literal "total bill"). | The user's choice. It's Toast's default and common etiquette. |
+| SAVE5 threshold | Strictly **> $20.00**, on the subtotal **before** discount, tax and tip | The brief: "order total before tax is over $20" |
+
+**Formula:**
+```
+toppingPrice = round(sizeBase × categoryRate)
+lineUnit     = sizeBase + Σ toppingPrice
+lineTotal    = lineUnit × quantity
+subtotal     = Σ lineTotal
+discount     = min(subtotal, round(promo(subtotal)))
+taxable      = subtotal − discount
+tax          = round(taxable × taxRate)
+tipBase      = taxable                  (PreTax, default)  |  taxable + tax  (PostTax)
+tip          = amount  |  round(tipBase × tip%)
+total        = taxable + tax + tip
+```
+**Ambiguity to record:** "percentage of the total bill" could be read as after tax. The brief adds "before
+tax" wherever it means a pre-tax amount and uses "bill" only here. We follow industry practice (pre-tax)
+and keep the base switchable.
+
+### D-039 — Pricing runs on the server only (#3)
+**Decision:** The order service is the single source of truth. The UI calls `POST /api/orders/quote` on
+every change (debounced) and only **displays** server-computed money; it never does money arithmetic.
+On submit, the client sends the total it displayed. The server re-prices, and if the result differs it
+returns **409 Price changed** with the new breakdown for the customer to confirm.
+**Why:** One implementation can't drift. It directly satisfies "the total the customer sees … must match
+the total the restaurant charges".
+
+### D-040 — Cancel deletes the order; idempotency outlives orders (#4)
+**Decision (the user's, against the recommendation):** Cancelling an order (allowed only while Not
+Started) **deletes** it: `DELETE /api/orders/{id}` returns **204**. Afterwards, `GET` returns **404** and
+a repeated `DELETE` returns **404**. The UI treats a 404 on a cancel retry as "already cancelled".
+**Consequences handled in the design:**
+- **Idempotency records live in their own table** (key, request hash, order id, outcome), not on the
+  order row. A slow, retried *submit* that arrives after a delete must **not** re-create the order. It
+  returns **409** "This order was cancelled" instead of creating a new one.
+- The delete is **conditional** on `status = NotStarted` in one statement, so a delete racing the
+  kitchen's "start" has exactly one winner (see #20).
+- No `Cancelled` status. The statuses are exactly the brief's four.
+**Status flow (assumption):** strictly linear, NotStarted → Started → ReadyForPickup → Delivered. No
+skipping, no going back.
+**Recommended was** a terminal `Cancelled` status, which keeps history and makes a repeated cancel
+idempotent. The README notes the trade-off.
+
+### D-041 — Simulated payment in scope (#5)
+**Decision (the user's):** The kiosk flow includes a **clearly labelled simulated** payment step. No real
+card data, no payment provider (the brief forbids real payments). A decline path demonstrates the error
+handling. #29 moves to `P1-should`.
+**Still to settle when #29 is planned** (proposed defaults): pay before the order is sent to the kitchen;
+an update while Not Started shows a simulated charge or refund for the difference; a cancel (delete)
+shows "payment voided (simulated)".
+
+### D-042 — Kitchen simulation (#6)
+**Decision:** `POST /api/kitchen/orders/{id}/advance` moves an order to its next status. It's
+deterministic and is what tests and demos use. Optionally, a background auto-advance timer runs behind
+`Kitchen:AutoAdvance:Enabled` (off by default; on in docker-compose for demos) with a configurable
+interval. Both go through the same transition rules (#20). A kitchen view (#33) calls the same endpoint.
+
+### D-043 — Validation limits and SAVE5 eligibility (#7)
+**Decision:** The recommended limits:
+
+| Input | Rule |
+|---|---|
+| Line items | 1–25 per order (an empty order is rejected) |
+| Quantity | Integer 1–20 per line |
+| Toppings | A set per pizza: no duplicates; any number from the menu |
+| Tip (amount) | $0.00–$500.00, at most 2 decimals |
+| Tip (percent) | 0–100%, at most 2 decimals |
+| Unknown size or topping codes | 400 with field errors |
+| Promo codes | Trimmed and case-insensitive. Unknown → a clear error |
+| **SAVE5 on ≤ $20.00** | **Rejected** with a message ("SAVE5 needs an order over $20.00 before tax"); the code isn't applied |
+| SAVE5 + ILOVEPIZZA | Rejected (one code per order; conflict rule in the promo engine) |
