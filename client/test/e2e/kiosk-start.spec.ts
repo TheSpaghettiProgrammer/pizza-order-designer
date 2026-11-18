@@ -142,3 +142,21 @@ test('corrupt stored data is ignored and removed', async ({ page }) => {
   await startButton(page).click();
   await expect(page).toHaveURL('/order');
 });
+
+test.describe('at tablet width', () => {
+  test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true });
+
+  test('Start order and Cancel order are large touch targets', async ({ page }) => {
+    await page.goto('/');
+    const start = await startButton(page).boundingBox();
+    expect(start).not.toBeNull();
+    expect(start?.height).toBeGreaterThanOrEqual(96);
+    expect((start?.x ?? 0) + (start?.width ?? 0)).toBeLessThanOrEqual(768);
+
+    await startButton(page).tap();
+    await expect(page).toHaveURL('/order');
+    await expect(cancelButton(page)).toBeVisible();
+    const cancel = await cancelButton(page).boundingBox();
+    expect(cancel?.height).toBeGreaterThanOrEqual(48);
+  });
+});
