@@ -19,6 +19,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/OrderPage.vue'),
         meta: { building: true },
       },
+      // Not a building route: the draft is already gone once an order is placed.
+      {
+        path: 'orders/:id',
+        name: 'order-status',
+        component: () => import('@/pages/OrderStatusPage.vue'),
+      },
     ],
   },
 

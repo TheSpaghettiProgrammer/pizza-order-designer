@@ -34,6 +34,7 @@
         </q-card>
         <TipPromoPanel v-if="lines.length" class="q-mt-md" />
         <OrderSummary class="q-mt-md" />
+        <SubmitPanel v-if="lines.length" class="q-mt-md" />
       </div>
     </div>
   </q-page>
@@ -44,6 +45,7 @@ import { computed, onMounted, ref } from 'vue';
 import { describeError } from '@/api/api-error';
 import OrderLines from '@/components/OrderLines.vue';
 import OrderSummary from '@/components/OrderSummary.vue';
+import SubmitPanel from '@/components/SubmitPanel.vue';
 import TipPromoPanel from '@/components/TipPromoPanel.vue';
 import PizzaCustomizer from '@/components/PizzaCustomizer.vue';
 import { useDraftOrderStore } from '@/stores/draft-order-store';
