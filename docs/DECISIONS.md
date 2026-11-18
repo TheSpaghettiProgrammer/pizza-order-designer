@@ -31,6 +31,10 @@ or **Open** (decided provisionally, revisit later).
 | D-023 | 2026-11-17 | Vitest via Quasar's official testing extension | Accepted |
 | D-024 | 2026-11-17 | Vue Router in `history` mode | Accepted |
 | D-025 | 2026-11-17 | Strip the Quasar template's demo content | Accepted |
+| D-026 | 2026-11-17 | Assignment kept in-repo as `docs/ASSIGNMENT.md` | Accepted |
+| D-027 | 2026-11-17 | Private GitHub repo `pizza-order-designer`, branch `main` | Accepted |
+| D-028 | 2026-11-17 | Work tracked as GitHub issues + Project board (labels, milestones M0–M4) | Accepted |
+| D-029 | 2026-11-17 | Open questions are `needs-decision` issues with a recommendation; resolved answers become README assumptions | Accepted |
 
 ---
 
@@ -212,3 +216,42 @@ unused `pnpm-workspace.yaml` (we use npm). `MainLayout` is now just a header ("P
 and `IndexPage` is a placeholder. Kept `ErrorNotFound.vue`, the Pinia/router setup, and
 `.vscode/mcp.json` (Quasar's MCP server for VS Code users).
 **Why:** Same spirit as the original `--bare` scaffold. Real pages come with the assignment.
+
+### D-026 — Assignment as Markdown in the repo
+**Decision:** The take-home brief (`.docx`) was converted to `docs/ASSIGNMENT.md`. The content is
+unchanged; bold pseudo-headings became real Markdown headings.
+**How:** pandoc wasn't installed, so a small Python script read the document XML directly (paragraph
+styles, numbering, bold/italic, tables). The result was checked against the source.
+**Why:** It's easier to read, diff and link to from issues and docs. The brief says the candidate owns
+the repository, so keeping the brief in it is fine.
+
+### D-027 — Repository hosting
+**Decision:** A **private** GitHub repo, `TheSpaghettiProgrammer/pizza-order-designer`, default branch
+`main`, created with `gh repo create --private --source . --push`. The first commit is the project skeleton.
+**Why:** The assignment requires a hosted git repo (no zip). The user asked for private. Commit history
+is graded under *Judgment*, so commits should be small and meaningful from here on, referencing issues
+(`Refs #N` / `Closes #N`).
+
+### D-028 — Work tracking: issues + Project board
+**Decision:** Every unit of work is a GitHub **issue** (not a draft item), so it can be linked from commits
+and PRs and discussed. All issues sit on a GitHub **Project** board.
+- **Labels:**
+  - type: `story`, `question`, `needs-decision`
+  - priority: `P0-required` (the assignment requires it), `P1-should` (scores on the evaluation
+    criteria), `P2-stretch` (kiosk vision beyond the brief)
+  - area: `area:pricing`, `area:order-service`, `area:frontend`, `area:observability`,
+    `area:testing`, `area:docs`, `area:devops`
+- **Milestones:** M0 Decisions → M1 Menu & pricing core → M2 Order service & lifecycle → M3 Order
+  builder UI → M4 Quality & deliverables.
+- **Story format:** a user story, acceptance-criteria checklist, notes/design, and `Depends on` links.
+
+**Why:** The user wants everything tracked. The P0/P1/P2 split keeps the 3-hour timebox and the kiosk
+vision visible side by side (see #1).
+
+### D-029 — Open questions as decision issues
+**Decision:** Every ambiguity in the brief, and every scope question, is a `question` + `needs-decision`
+issue in **M0**, with options and a **recommendation**. When the user answers, the decision is recorded
+here as a `D-xxx` entry and becomes a line in the README **Assumptions** section. Questions specific to
+one story are asked inside that story instead.
+**Why:** The assignment says the Assumptions section is "read closely". Capturing the questions up front
+makes it complete and traceable.

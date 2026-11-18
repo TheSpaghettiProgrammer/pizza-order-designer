@@ -99,10 +99,68 @@ Not a git repo yet; that comes later.
 ### Not verified
 - Nothing outstanding from this session.
 
-### Open items
+### Open items (session 1)
 - ~~Upgrade host Node~~ Done: Node 24.22.1 / npm 12.2.3 (D-021).
 - ~~Decide on the auto-filled `author`~~ Done: the user chose to remove the email; `author` is now the
   name only.
 - No EF migration exists yet. The first one is created when the first entities are modeled.
 - Replace the placeholder test once real endpoints exist (D-017).
-- `git init` + first commit when the user is ready.
+- ~~`git init` + first commit when the user is ready~~ Done in session 2.
+
+---
+
+## 2026-11-17 — Session 2: Repo, project board, backlog
+
+**Goal:** Put the project in a private GitHub repo, set up a Project board, and turn the take-home brief
+into reviewable stories and open questions. **No feature code yet.** The user reviews the backlog first.
+
+### Input
+- The take-home brief (`.docx`) → `docs/ASSIGNMENT.md` (D-026).
+- The user's product vision: a modern self-order kiosk (begin order → browse/scroll options → complete
+  or cancel → pay → send to kitchen), with errors shown to the customer as friendly text and logged in
+  detail for developers.
+
+### Key findings from the brief (they shape the backlog)
+- **3-hour timebox.** *Judgment*, *proportionate design* and an honest cut list are graded, which
+  conflicts with the full kiosk vision → question #1, plus the P0/P1/P2 labels.
+- **Don't build:** real payments, a real kitchen, auth, menu admin, multiple locations. So "pay" can only
+  be simulated (#5).
+- **The graders focus on:** exact money and rounding with one source of truth (#2, #3); data-driven,
+  extensible pricing and promos (#8, #11); safe retries (#16); explicit state transitions and the
+  cancel-versus-kitchen-start race (#20); invariant-focused tests (#34, #35); README Assumptions and
+  design write-up (#37).
+- **Storage:** "any storage, no hosted DB required". Local Postgres in Docker fits, so no change.
+- **Separate process requirement:** the "order builder" (Quasar SPA) and the "order service" (.NET API)
+  already run as separate processes that talk over HTTP.
+
+### Done
+1. **git:** `git init -b main`. Checked the add list first (66 files, nothing from `node_modules`,
+   `bin`/`obj`, `.quasar`, `dist` or `.env`). Initial commit "Initial project skeleton".
+   - The first commit attempt failed because PowerShell passed the here-string as an argument
+     instead of piping it to stdin → used `git commit -F <file>`.
+2. **GitHub repo (D-027):** https://github.com/TheSpaghettiProgrammer/pizza-order-designer, **private**,
+   `main` pushed.
+3. **Labels and milestones (D-028):** 13 labels, 5 milestones (M0–M4).
+4. **Backlog (D-028, D-029):** **38 issues**, created by a script so cross-references resolve to issue
+   numbers.
+   - **M0 Decisions (7 questions):** #1 scope vs timebox and kiosk vision · #2 order of operations and
+     rounding · #3 where pricing runs · #4 cancelled status and linear flow · #5 simulated payment ·
+     #6 kitchen simulation · #7 validation limits.
+   - **M1 Menu & pricing (7):** #8 data-driven menu · #9 money and rounding · #10 pricing engine ·
+     #11 promo rules engine · #12 tax and tip · #13 order description · #14 quote API.
+   - **M2 Order service (10):** #15 persistence · #16 idempotent submit · #17 get/status · #18 update ·
+     #19 cancel · #20 state machine and race guarantees · #21 kitchen simulation · #22 error contract
+     (friendly vs developer) · #23 structured logging · #24 OpenAPI and examples.
+   - **M3 Order builder UI (9):** #25 kiosk start screen · #26 menu and customizer · #27 cart and running
+     total · #28 tip and promo inputs · #29 simulated payment · #30 retry-safe submit · #31 status
+     tracking and update/cancel · #32 friendly UI errors · #33 kitchen view.
+   - **M4 Quality & deliverables (5):** #34 pricing invariant tests · #35 lifecycle, retry and
+     concurrency integration tests · #36 frontend tests · #37 README deliverables · #38 CI.
+   - By priority (checked against GitHub): P0 = 30, P1 = 4 (#23, #24, #25, #38),
+     P2 = 4 (#5, #29, #33, #36).
+5. **Project board:** needs the `project` OAuth scope, which the `gh` token lacked
+   (`gist, read:org, repo, workflow`). Started `gh auth refresh -s project` in a terminal tab for the
+   user to finish the browser sign-in. *(Board details below once created.)*
+
+### Open items
+- **User review of the backlog**, and answers to the M0 questions (#1–#7), before any feature work.

@@ -35,4 +35,13 @@ This is a job-interview take-home. The user wants **every action and decision tr
   install scripts by default. The `@parcel/watcher` warning is harmless.
 - Docker Desktop 4.99. An older 4.58 crashed on stale AF_UNIX sockets in `%LOCALAPPDATA%\Docker\run` and
   `%LOCALAPPDATA%\docker-secrets-engine`. If that recurs, rename the folder aside while Docker is stopped.
-- Not a git repo yet. Don't `git init` until the user asks.
+
+## Repo and work tracking
+- GitHub (private): https://github.com/TheSpaghettiProgrammer/pizza-order-designer, default branch `main`.
+- All work is tracked as GitHub issues on the project board. Labels: `story` / `question` /
+  `needs-decision`; `P0-required` / `P1-should` / `P2-stretch`; `area:*`. Milestones: M0 Decisions →
+  M4 Quality & deliverables.
+- Small, meaningful commits that reference issues (`Refs #N`, `Closes #N`). Commit history is graded.
+- Answers to M0 questions (#1–#7) become `D-xxx` entries and README **Assumptions**. Don't build
+  anything that depends on an unanswered question without flagging it.
+- The brief is in `docs/ASSIGNMENT.md`. 3-hour timebox: prioritize P0, keep a cut list.
