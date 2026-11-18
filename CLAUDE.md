@@ -38,7 +38,9 @@ This is a job-interview take-home. The user wants **every action and decision tr
 
 ## Repo and work tracking
 - GitHub (private): https://github.com/TheSpaghettiProgrammer/pizza-order-designer, default branch `main`.
-- All work is tracked as GitHub issues on the project board. Labels: `story` / `question` /
+- All work is tracked as GitHub issues on the project board
+  (https://github.com/users/TheSpaghettiProgrammer/projects/6). The board has a Priority field. Move
+  items through Status (Todo → In Progress → Done) as work progresses. Labels: `story` / `question` /
   `needs-decision`; `P0-required` / `P1-should` / `P2-stretch`; `area:*`. Milestones: M0 Decisions →
   M4 Quality & deliverables.
 - Small, meaningful commits that reference issues (`Refs #N`, `Closes #N`). Commit history is graded.

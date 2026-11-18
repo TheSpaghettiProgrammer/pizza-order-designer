@@ -247,6 +247,9 @@ and PRs and discussed. All issues sit on a GitHub **Project** board.
 
 **Why:** The user wants everything tracked. The P0/P1/P2 split keeps the 3-hour timebox and the kiosk
 vision visible side by side (see #1).
+**Board:** https://github.com/users/TheSpaghettiProgrammer/projects/6 (private, linked to the repo). It
+has a `Priority` single-select field that mirrors the priority labels, so the board can group and sort
+by it.
 
 ### D-029 — Open questions as decision issues
 **Decision:** Every ambiguity in the brief, and every scope question, is a `question` + `needs-decision`

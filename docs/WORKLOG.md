@@ -160,7 +160,16 @@ into reviewable stories and open questions. **No feature code yet.** The user re
      P2 = 4 (#5, #29, #33, #36).
 5. **Project board:** needs the `project` OAuth scope, which the `gh` token lacked
    (`gist, read:org, repo, workflow`). Started `gh auth refresh -s project` in a terminal tab for the
-   user to finish the browser sign-in. *(Board details below once created.)*
+   user to finish the browser sign-in. Once the scope was granted, a script:
+   - created the project **"Pizza Order Designer"**: https://github.com/users/TheSpaghettiProgrammer/projects/6
+     (private),
+   - linked it to the repo,
+   - added a **Priority** single-select field (P0/P1/P2, mirroring the labels),
+   - added all 38 issues, with Priority set from the labels.
+
+   **Verified:** 38 items, all Status = Todo.
+   The layout is the default table. Switching it to Board or grouping by Milestone has to be done in
+   the web UI, because the API can't create views.
 
 ### Open items
 - **User review of the backlog**, and answers to the M0 questions (#1–#7), before any feature work.
