@@ -398,9 +398,36 @@ settles #8's ownership: the order from D-035 (#41 → #25 → #8 → #26) now ru
   then D-037–D-043; their sections before the "M0 decisions" block; WORKLOG Session 3 then Session 4.
   **Merge order: #42 first, then #43.** #43 then shows only its own changes.
 
+### #25 planning, continued here
+- **#42 and #43 merged** by the user (`e583d06`, `68b27c7`). One hiccup: my first sync ran before #43 was
+  merged, and I deleted the *local* `docs/m0-decisions` branch while its PR was still open. Nothing was
+  lost (the remote branch and PR were intact), and the user then merged it.
+- **Old worktree:** `git worktree remove` unregistered it and deleted its contents. An **empty folder**
+  is still locked by another process (probably the absorbed session's shell). It's harmless and excluded
+  from git, so it gets deleted once that session is closed.
+- **Merged `main` into `story/25-kiosk-start-screen`** (`1393b65`). The WORKLOG conflict was resolved by
+  keeping both: the Session 3 #25-planning notes, then Session 4.
+- **Plan header updated** with the user's answers (#44 split; both defaults kept; D-043 one promo code;
+  new decisions numbered D-044+).
+- **Subagents:** the `pizza-*` agent types aren't registered in this session, because they were added
+  after it started. So each role ran as a `general-purpose` agent on **opus**, briefed with the
+  6-part template and told to follow `.claude/agents/<role>.md` as its contract.
+  - **Planner round 2:** a complete, self-contained Round 2 with a "Response to review round 1" table.
+    New: the `useEndOrder().endOrder()` single exit path, shared with #44; warn-once persistence; scoped,
+    exact Playwright locators; E1's Cancel checks moved to step 3 so every step stays green; tests trimmed
+    to 12 unit + 8 E2E (+1 optional).
+  - Checked that it only changed section 1, then committed (`0149b08`).
+  - **Plan review round 2: APPROVE.** All 11 round-1 findings were resolved, with no new Blocker or Major.
+    The reviewer re-ran ESLint (exit 0) and checked the plan's claims against the installed Quasar,
+    vue-router and Vitest. Four new Minors for the developer to fold in: `unbound-method` /
+    `no-unsafe-*` traps in the tests, a ≥ 96 px assertion for Start order, filtering E8's console
+    warning, and a complete `Storage` stub.
+- **Proposed decisions at Gate 1:** D-044 (kiosk flow, route guard and shared exit path) and D-045
+  (draft-order store and persistence), plus three README assumption lines.
+
 ### Open items
-- Merge #42, then #43. Then merge `main` into `story/25-kiosk-start-screen`, remove the old worktree
-  `.claude/worktrees/41-playwright-e2e`, and run #25 planner round 2 → re-review → Gate 1.
+- **Gate 1:** the user approves the #25 plan. Then record D-044/D-045, run `pizza-developer`, then
+  `pizza-reviewer`, then the PR.
 - `fix/` branch: make `lint:check` really check formatting (CRLF / `endOfLine`).
 - Publish the menu and quote API contract when #8 and #14 are planned.
 - #29 payment sub-decisions (timing, reconciliation on update and delete) are settled at its plan gate.

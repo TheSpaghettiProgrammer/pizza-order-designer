@@ -4,7 +4,7 @@
 |---|---|
 | **Story** | https://github.com/TheSpaghettiProgrammer/pizza-order-designer/issues/25 |
 | **Branch** | `story/25-kiosk-start-screen` (#42 and #43 merged into `main`; `main` merged into this branch) |
-| **Status** | Planner round 2 (round 1 = REVISE). The user has answered the open questions (see below) |
+| **Status** | **Awaiting user approval (Gate 1).** Plan review round 2 = APPROVE; 4 Minors for the developer to fold in |
 | **Depends on** | #41 (Playwright harness, merged). **Follow-up:** #44 (idle timeout) builds on this story |
 | **Decisions** | D-011 (same-origin `/api`), D-020 (Quasar CLI), D-024 (history router), D-025 (strip demo content), D-034 (Playwright E2E), D-035 (UI work order), D-037 (full kiosk scope), D-043 (validation limits, one promo code) |
 
@@ -770,6 +770,70 @@ same round.
 - Deleting `IndexPage.vue` and its Vitest test: sound (it's the D-025 placeholder; UI behaviour is tested with
   Playwright).
 - D-0xx placeholders: see finding 5.
+
+### Round 2
+**Verdict:** APPROVE
+
+Round 2 resolves both Majors and all nine Minors. The design is the same lean one from Round 1, and it now
+rests on the merged decisions and the user's answers. `useEndOrder().endOrder()` gives #44 the single exit
+path that its AC asks for. Every step's specs only use what exists at that step. I found no new Blocker or
+Major. The four new Minors below are small, and **the developer folds them in during implementation**. None
+of them needs another planning round.
+
+**What I checked this round, against the code and installed packages:**
+- **Baseline lint.** On this branch, `npx eslint -c ./eslint.config.js "./src*/**/*.{ts,js,cjs,mjs,vue}" test/e2e test/vitest`
+  exits 0, so adding `test/vitest` to the command is safe. `.quasar/tsconfig.json` includes `./../**/*`, so
+  test files are type-checked and type-aware linted.
+- **Dialog options.** Quasar 2.35.5's `QDialogOptions` has `focus?: "ok" | "cancel" | "none"`
+  (`DialogPluginComponent.js` validates it). `cancel`/`ok` accept `QBtnProps` objects, so `noCaps`/`flat` type-check.
+- **#44 reuse.** `use-model-toggle.js` watches `proxy.$route.fullPath` and hides the dialog when
+  `hideOnRouteChange` is set and a router exists. That matches the plan's note that an `endOrder()` from #44
+  closes an open Cancel dialog. Hiding it this way doesn't run its `onOk`, so the order can't end twice.
+  `endOrder()` is exactly #44's "`cancelOrder()` → start screen" path, and it's callable from a
+  `useIdleTimeout` composable in `MainLayout` setup.
+- **Router types (vue-router 5.5.1).** It exports `RouteLocationNormalized`, `RouteLocationRaw`, `RouteMeta`
+  and `NavigationGuardReturn`. `RouteRecordNameGeneric` is `string | symbol | undefined`, so the 404 case in G1
+  (`name: undefined`) type-checks under `exactOptionalPropertyTypes`.
+- **Vitest 5.1 / happy-dom 20.** `populateGlobal` defines each window key on `globalThis` as a configurable
+  getter, so `vi.spyOn(globalThis, 'sessionStorage', 'get')` works and `restoreAllMocks()` undoes it.
+- **Guard and history.** `to.meta` merges the matched records' meta, so the `order` child's `building: true`
+  shows up under the unnamed `MainLayout` parent. On a Back (popstate) into `/order` with no draft, vue-router
+  follows the guard's redirect, and E3's `goBack()` → `/` holds. On the 404 page, "Go Home" (`to="/"`) resolves
+  to `name: 'start'`, so E6's redirect to `/order` holds. The smoke specs use fresh contexts, so they stay green.
+- **Decision citations.** D-037, D-039, D-040 and D-043 match the titles and content in `docs/DECISIONS.md`
+  (D-043: quantity 1–20, 1–25 lines, toppings a set, "one code per order").
+
+**Round 1 findings:**
+
+| # | Round 1 finding | Status |
+|---|---|---|
+| 1 | Major: out-of-date M0 status | **Resolved.** AC 4 moved to #44 by the user. The limits are justified by D-043 and pricing by D-039. The walk-away case now belongs to #44. |
+| 2 | Major: promo shape vs the decision | **Resolved.** D-043 says one code per order, so `promoCode: string \| null` stays, and the README line is proposed. |
+| 3 | Minor: step 2 not green | **Resolved.** E1's Cancel assertions move to step 3, and each spec is tagged with its step. |
+| 4 | Minor: ambiguous locators | **Resolved.** Locators are scoped to the banner and the dialog, all with `exact: true`. |
+| 5 | Minor: decision numbering | **Resolved.** Decisions are cited by number and title. D-044/D-045 are placeholders the orchestrator assigns. |
+| 6 | Minor: tip wire contract | **Resolved.** The wire format is left to #12/#14. |
+| 7 | Minor: noisy warnings | **Resolved.** Each `createDraftPersistence()` instance warns once, and U4/U10 assert exactly one warning. |
+| 8a | Minor: `no-unsafe-*` / `no-floating-promises` | **Resolved** for `src/`. The same `unknown` rule should apply in the tests (new Minor 1). |
+| 8b | Minor: fragile storage stubbing | **Resolved.** It uses `vi.spyOn(globalThis, 'sessionStorage', 'get')`. |
+| 8c | Minor: store lookup inside `beforeEach` | **Resolved.** The plan states it with the reason, and the fallback is removed. |
+| 9 | Minor: proportion | **Resolved.** The E2E list shrinks to 8 specs plus 1 optional, and the storage-unavailable E2E is optional. |
+| 10 | Minor: Back / Escape untested | **Resolved.** E3 adds `goBack()` and E2 adds `Escape`. |
+| 11 | Minor: README owner | **Resolved.** The orchestrator adds the README lines, and the developer doesn't touch `README.md`. |
+
+**New findings (Round 2):** all Minor, for the developer to fold in during implementation.
+
+| # | Severity | Finding | Suggested change |
+|---|---|---|---|
+| 1 | Minor | **Lint traps in the unit tests.** `DraftPersistence` declares `load()`/`save()` as *method* signatures. `recommendedTypeChecked` turns on `@typescript-eslint/unbound-method`, so a test that writes `const { load, save } = createDraftPersistence()` fails lint. Separately, tests that read storage back with `JSON.parse(sessionStorage.getItem(KEY)!)` and then access `.version`/`.draft` get `any`, which trips `no-unsafe-member-access`/`no-unsafe-assignment`. | In the tests, call the methods on the object (`const p = createDraftPersistence(); p.load()`), or declare the members as properties (`load: () => DraftOrder \| null`). Type parsed storage as `unknown` (`const stored: unknown = JSON.parse(…)`) and compare the whole value with `toEqual({ version: 1, draft: … })`. |
+| 2 | Minor | **E9 checks less than the design promises.** 1.2 sizes Start order at "at least 96 px tall" to make it the AC's *large* button, but E9 only asserts ≥ 48 px, the generic touch-target minimum. A regression to an ordinary button would still pass. | Assert ≥ 96 px for Start order, the design value backing "large". Keep ≥ 48 px for Cancel order. |
+| 3 | Minor | **E8 (optional) counts every console warning.** In dev mode, Vue, Vite or Quasar can log unrelated warnings, so "at most one `console` warning" can flake for reasons that have nothing to do with storage. | Count only messages of type `warning` whose text contains the plan's message ("can't be saved in this browser"), and expect exactly one. |
+| 4 | Minor | **The `fakeStorage` stub has to type-check.** `.mockReturnValue(fakeStorage)` on the `sessionStorage` getter needs a full `Storage` (`length`, `key`, `clear`, `getItem`, `setItem`, `removeItem`). A partial object needs a cast, and the codebase otherwise avoids `as unknown as`. | Build `fakeStorage` as a complete `Storage` whose methods throw (a small object literal typed `Storage`, or a class implementing it). Don't cast. |
+
+**Proportion and executability:** right-sized for a P1 story. That's 12 unit tests (mostly `it.each` tables)
+and 8 required E2E specs, at about 55–70 minutes. The file list is complete (`src/composables/` is a new
+folder). The step order keeps lint, types, unit and E2E green. The intermediate commit after step 2 has no
+UI exit, but that stays on the branch and no step 2 spec needs it.
 
 ---
 
