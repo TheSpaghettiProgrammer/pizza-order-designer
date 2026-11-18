@@ -171,5 +171,20 @@ into reviewable stories and open questions. **No feature code yet.** The user re
    The layout is the default table. Switching it to Board or grouping by Milestone has to be done in
    the web UI, because the API can't create views.
 
+6. **Subagent guidelines and workflow** (D-030 to D-032), at the user's request:
+   - `docs/SUBAGENTS.md`: principles, the roles table (model, tools, inputs, outputs, permissions), a
+     workflow diagram (Mermaid) with the two user gates and loop limits, the 6-part briefing template,
+     shared rules (context files, Windows environment, the check commands, conventions, the Never
+     list), verdict and report formats, and when to escalate.
+   - `docs/plans/_TEMPLATE.md`: the per-story plan file. Each role has its own section, and rounds are
+     appended.
+   - `.claude/agents/`: `pizza-planner`, `pizza-plan-reviewer`, `pizza-developer`, `pizza-reviewer`
+     definitions, each pointing back to SUBAGENTS.md as its contract.
+   - `CLAUDE.md`: a Subagents section. Root `.gitignore` now excludes `.claude/settings.local.json`.
+   - Not yet exercised on a real story. The first story run will show whether the briefs and templates
+     need adjusting. The agent definitions load at session start, so a new session (or restart) may be
+     needed before they can be invoked by name.
+
 ### Open items
 - **User review of the backlog**, and answers to the M0 questions (#1–#7), before any feature work.
+- User review of `docs/SUBAGENTS.md` and the agent definitions.

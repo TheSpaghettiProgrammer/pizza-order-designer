@@ -47,3 +47,13 @@ This is a job-interview take-home. The user wants **every action and decision tr
 - Answers to M0 questions (#1–#7) become `D-xxx` entries and README **Assumptions**. Don't build
   anything that depends on an unanswered question without flagging it.
 - The brief is in `docs/ASSIGNMENT.md`. 3-hour timebox: prioritize P0, keep a cut list.
+
+## Subagents
+- Follow **`docs/SUBAGENTS.md`** for every story: `pizza-planner` → `pizza-plan-reviewer` → **user
+  approves the plan** → `pizza-developer` → `pizza-reviewer` → orchestrator opens the PR → **user
+  merges**.
+- Agent definitions are in `.claude/agents/`. Each story has a plan file `docs/plans/<N>-<slug>.md`
+  (from `_TEMPLATE.md`) where every role writes only its own section.
+- Brief every subagent with the 6-part template in `docs/SUBAGENTS.md` §5. Subagents start cold.
+- Only the orchestrator (main session) pushes, opens PRs, touches GitHub issues, or edits
+  `DECISIONS.md`/`WORKLOG.md`. Re-run the checks yourself before reporting a subagent's result.

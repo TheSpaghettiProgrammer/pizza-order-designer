@@ -35,6 +35,9 @@ or **Open** (decided provisionally, revisit later).
 | D-027 | 2026-11-17 | Private GitHub repo `pizza-order-designer`, branch `main` | Accepted |
 | D-028 | 2026-11-17 | Work tracked as GitHub issues + Project board (labels, milestones M0–M4) | Accepted |
 | D-029 | 2026-11-17 | Open questions are `needs-decision` issues with a recommendation; resolved answers become README assumptions | Accepted |
+| D-030 | 2026-11-17 | Four-role subagent workflow (planner → plan reviewer → developer → reviewer) with two user gates | Accepted |
+| D-031 | 2026-11-17 | One plan file per story in `docs/plans/`, the single artifact every role writes to | Accepted |
+| D-032 | 2026-11-17 | Branch per story (`story/<N>-<slug>`), PR with `Closes #N`, user merges | Accepted |
 
 ---
 
@@ -258,3 +261,44 @@ here as a `D-xxx` entry and becomes a line in the README **Assumptions** section
 one story are asked inside that story instead.
 **Why:** The assignment says the Assumptions section is "read closely". Capturing the questions up front
 makes it complete and traceable.
+
+### D-030 — Subagent workflow
+**Decision:** Every non-trivial story goes through four subagent roles, defined in `.claude/agents/`
+and governed by `docs/SUBAGENTS.md`:
+
+| Role | Agent | Model |
+|---|---|---|
+| Plan developer | `pizza-planner` | opus |
+| Plan reviewer | `pizza-plan-reviewer` | opus |
+| Developer | `pizza-developer` | sonnet; opus for the money/concurrency stories #10, #11, #16, #20 |
+| Code reviewer | `pizza-reviewer` | opus |
+
+The main session is the **orchestrator**. It briefs each agent with a fixed 6-part template (role,
+story, plan file, branch, goal, context/constraints/return). It re-runs the checks itself, and it is the
+only one that touches git remotes, GitHub, or the decision and work logs.
+- **Two user gates:** the user approves the plan before development starts, and merges the PR.
+- **Loop limits:** at most 2 REVISE / CHANGES REQUESTED rounds per gate, then escalate to the user.
+- **Small changes** (typos, docs, one-line config) may skip planning; the WORKLOG must say so.
+
+**Why:** The user asked for planner, plan-reviewer, developer and reviewer subagents, each with context
+and a clear goal. Separating planning from building, and reviewing each independently, catches design
+errors before code and ties every change back to the story's acceptance criteria. Opus is used where
+judgment matters, and sonnet for executing an approved plan.
+**Alternatives:** The installed `agent-kit` plugin (supervisor/developer/reviewer) has no
+plan-review stage and no project-specific rules, so it's not used. One general agent per story would
+have no independent review, which is weak evidence for the "AI leverage" grading criterion.
+
+### D-031 — Plan file per story
+**Decision:** Each story gets `docs/plans/<N>-<slug>.md`, created from `docs/plans/_TEMPLATE.md`. It
+holds the Plan, Plan review, Implementation notes, Code review and Outcome. Each role writes only its
+own section, and later rounds are appended, never overwritten.
+**Why:** One durable, reviewable record per story, committed with the code. It lets the user review
+plans in the editor and gives concrete evidence for the README's AI usage note (what the AI proposed,
+what review caught, what was fixed).
+
+### D-032 — Branch and PR per story
+**Decision:** The work for story #N happens on `story/<N>-<slug>`. The developer commits locally in
+small, logical steps (`Refs #N`). The orchestrator pushes and opens a PR ending with `Closes #N`, and the
+user merges it. Then the board item moves to Done.
+**Why:** It gives a readable commit history (graded under *Judgment*), a natural review point, and
+issues that auto-close. Parallel stories run in separate git worktrees.
